@@ -17,6 +17,7 @@
 A. 前提パッケージを入れる
 B. Claude Code をインストール
 C. このテンプレートを clone して Python 依存を入れる
+C2. 自分の GitHub プライベートリポジトリに切替える（推奨）
 D. Discord で bot を作ってトークンを取る
 E. 必要な Discord の ID を3つ取る
 F. Webhook トークンを生成
@@ -211,6 +212,84 @@ pip install -r requirements.txt
 ```
 
 `~/secretary/` の下に設定ファイルやスクリプトが並んでいれば OK です。
+
+---
+
+## C2. 自分の GitHub プライベートリポジトリに切替える（推奨）
+
+このあと `.env` や自分専用の設定を書き込むので、自分の **プライベート**
+リポジトリに置き換えておきます（テンプレートは公開リポなので、そのまま
+push してしまうと他人に見られる可能性があります）。
+
+> `.env` や `data/` は `.gitignore` 済みなので、仮に push しても
+> シークレットは漏れませんが、口調ファイルやタスク履歴など「他人に
+> 読まれたくない個人情報」が増えるので、最初にプライベート化しておく
+> のが安全です。
+
+### C2-1. GitHub アカウントを準備
+
+すでに GitHub アカウントを持っている人は飛ばしてください。
+持っていない人は https://github.com/signup から無料で作ります。
+
+### C2-2. プライベートリポジトリを新規作成
+
+ブラウザ作業です。
+
+1. https://github.com/new を開く
+2. `Repository name` に好きな名前（例: `my-secretary`）
+3. **`Private`** を選択（ここ重要）
+4. `Initialize this repository with:` の項目は**すべて外す**（README
+   も `.gitignore` も付けない）
+5. 右下の `Create repository` をクリック
+
+作成後に表示される URL を控えます（例:
+`https://github.com/FRIEND_USER/my-secretary.git`）。
+
+### C2-3. Personal Access Token を発行
+
+push するときの認証に使います。
+
+1. https://github.com/settings/tokens?type=beta を開く
+2. `Generate new token` をクリック
+3. `Token name` に適当に（例: `my-secretary-vps`）
+4. `Expiration` は好みで（90 days 推奨）
+5. `Repository access` は **`Only select repositories`** を選び、
+   C2-2 で作ったリポジトリを選択
+6. `Repository permissions` を開いて **`Contents`** を **`Read and write`**
+   に変更（ここが重要、これを忘れると push で 403 が出ます）
+7. 下の `Generate token` をクリック
+8. 表示された `github_pat_xxxx...` の文字列を**安全な場所にコピー**（この
+   画面を閉じると二度と表示されません）
+
+### C2-4. remote を切り替えて初回 push
+
+VPS 側で以下を実行します。`FRIEND_USER` と `my-secretary` の部分は
+C2-2 で決めた値に書き換えてください。
+
+```bash
+cd ~/secretary
+git remote set-url origin https://github.com/FRIEND_USER/my-secretary.git
+git push -u origin main
+```
+
+`Username for 'https://github.com':` と聞かれたら **GitHub のユーザー名**、
+`Password for 'https://...':` と聞かれたら **C2-3 で控えた PAT** を
+貼り付けます（ここでは GitHub アカウントのログインパスワードではなく、
+PAT を使うのがポイントです）。
+
+毎回 PAT を打ちたくない場合は、以下で記憶させられます。
+
+```bash
+git config --global credential.helper store
+git push   # 一度ここで PAT を入れれば次回以降は保存される
+```
+
+> 保存先は `~/.git-credentials` で平文です。VPS をあまり信用できない環境で
+> 使う場合はやらず、毎回入れるか SSH 鍵認証に切替えてください。
+
+push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが並んで
+いるはずです。以降は `.env` を書いたり設定を調整したあとで、こまめに
+`git commit` → `git push` しておけばバックアップとしても機能します。
 
 ---
 
