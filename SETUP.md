@@ -18,6 +18,7 @@ A. 前提パッケージを入れる
 B. Claude Code をインストール
 C. このテンプレートを clone して Python 依存を入れる
 C2. 自分の GitHub プライベートリポジトリに切替える（推奨）
+C3. Google API 連携をセットアップ（Calendar / Gmail / Sheets / Drive）
 D. Discord で bot を作ってトークンを取る
 E. 必要な Discord の ID を3つ取る
 F. Webhook トークンを生成
@@ -290,6 +291,116 @@ git push   # 一度ここで PAT を入れれば次回以降は保存される
 push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが並んで
 いるはずです。以降は `.env` を書いたり設定を調整したあとで、こまめに
 `git commit` → `git push` しておけばバックアップとしても機能します。
+
+---
+
+## C3. Google API 連携をセットアップ（Calendar / Gmail / Sheets / Drive）
+
+秘書に Google カレンダーを見せたり、Gmail を監視させたり、Google
+ドキュメント／スプレッドシートを操作させるための準備です。**全部有効に
+しても Google 側に課金は一切発生しません**（すべて無料枠内）。
+
+使わない機能があってもここで全スコープに権限を通しておくと、あとから
+「これもやらせたい」となったときに再セットアップが不要で楽です。
+
+### C3-1. Google Cloud プロジェクトを作成
+
+ブラウザ作業です。
+
+1. https://console.cloud.google.com にアクセス
+2. 初回なら利用規約に同意
+3. 画面上部のプロジェクト選択 → `New Project`（新しいプロジェクト）
+4. プロジェクト名を適当に（例: `my-secretary`）→ `Create`
+5. 作成後、上部のプロジェクト選択で新しく作ったプロジェクトを選んでおく
+
+### C3-2. 必要な API を有効化する
+
+1. 左メニュー（横三本線）→ `APIs & Services` → `Library`
+2. 検索窓から以下の 4 つを 1 個ずつ検索して、各ページで `Enable` を押す:
+   - **Google Calendar API**
+   - **Gmail API**
+   - **Google Sheets API**
+   - **Google Drive API**
+
+4つとも `Manage` ボタンに変わったら有効化完了です。
+
+### C3-3. OAuth 同意画面を作成
+
+1. 左メニュー → `APIs & Services` → `OAuth consent screen`
+2. `User Type` は **`External`** を選んで `Create`
+3. `App name` に適当に（例: `my-secretary`）
+4. `User support email` と `Developer contact information` に自分のメール
+   アドレスを入れる（他は空欄のまま OK）
+5. 下の `Save and Continue` を押す
+6. `Scopes` のページはそのまま `Save and Continue`
+7. `Test users` のページで `Add Users` → 自分の Google アカウントの
+   メールアドレスを追加 → `Save and Continue`
+8. 最後のサマリで `Back to Dashboard`
+
+> `Publishing status` は `Testing` のままで OK。本番公開の審査は不要です。
+
+### C3-4. OAuth クライアント ID を発行
+
+1. 左メニュー → `APIs & Services` → `Credentials`
+2. 上部の `+ Create Credentials` → `OAuth client ID`
+3. `Application type` で **`Desktop app`** を選ぶ
+4. `Name` は適当に（例: `my-secretary-desktop`）
+5. `Create` を押す
+6. 出てきたダイアログの右下 `Download JSON` をクリック
+
+ダウンロードされた `client_secret_xxxxx.json` を、VPS の
+`~/secretary/integrations/gcal/credentials.json` に置きます。
+
+**手元 PC から VPS に送る方法（どちらか1つ）**:
+
+```bash
+# 方法A: scp で送る（手元PCで実行）
+scp ~/Downloads/client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+```
+
+```bash
+# 方法B: VPS側で新規作成して中身を貼り付ける
+nano ~/secretary/integrations/gcal/credentials.json
+# DLしたJSONをエディタに丸ごと貼り付け → Ctrl+O → Enter → Ctrl+X
+```
+
+### C3-5. 認証フローを走らせる
+
+VPS 側で実行します。
+
+```bash
+python3 ~/secretary/integrations/gcal/reauth.py
+```
+
+スクリプトが認証 URL を表示するので、そのURLをブラウザで開きます。
+
+**ブラウザはVPS上ではなく、手元PC or スマホのブラウザでOK**です。手順:
+
+1. 認証 URL を **手元の端末のブラウザ**で開く
+2. Google アカウントを選択（C3-3 でテストユーザーに追加したアカウント）
+3. 「確認されていないアプリ」の警告が出たら `詳細` → `安全でない
+   ページに移動` で進む（自分で作ったアプリなので安心してOK）
+4. すべての権限にチェックを入れて `許可`（カレンダー・Gmail・Sheets・
+   Drive にまとめて権限を通しておく）
+5. Google が `http://localhost:8080/?code=...` のURLにリダイレクトする
+   → ブラウザは「このサイトにアクセスできません」と出てOK、URLバーの
+   **URL全体**をコピー
+6. VPS 側の `reauth.py` のプロンプトにそのURLを貼って Enter
+
+成功すると `~/secretary/integrations/gcal/token.json` が作成されます。
+
+### C3-6. 動作確認
+
+```bash
+python3 ~/secretary/integrations/gcal/gcal_today.py
+```
+
+今日の予定が返ってくれば成功。
+
+> ヘッドレス VPS でブラウザが VPS 上にない場合でも、`reauth.py` は
+> URL コピー方式に対応しているので上記の手順で問題なく通ります。
+> もし SSH トンネルで VPS の localhost:8080 を手元に引きたい場合は
+> `docs/google.md` を参照。
 
 ---
 
