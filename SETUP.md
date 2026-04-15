@@ -212,6 +212,13 @@ cd ~/secretary
 pip install -r requirements.txt
 ```
 
+Ubuntu 24.04 以降だと `pip install` が `externally-managed-environment`
+というエラーで弾かれることがあります。その場合は以下を使ってください。
+
+```bash
+pip install --break-system-packages -r requirements.txt
+```
+
 `~/secretary/` の下に設定ファイルやスクリプトが並んでいれば OK です。
 
 ---
