@@ -998,16 +998,38 @@ curl -s http://localhost:8781/health  # {"status":"ok",...} が返れば OK
 
 ### Discord プラグインの初期設定
 
-`screen -r secretary` で秘書のセッションに入ってから、以下を順に打ちます。
+`screen -r secretary` で秘書のセッションに入ってから、 まず Discord プラグインを install + reload する [これを忘れると `/discord:configure` が「コマンド無し」 で詰む]:
+
+#### 1. プラグインを install + 有効化
+
+```
+/plugins
+```
+
+→ プラグイン list が表示される、 **`discord`** を選んで install [or enable]
+
+[既に install 済の場合 `enabled` 表示、 そのまま次へ]
+
+#### 2. プラグインを reload [認識させる]
+
+`/plugins` 画面を抜けた後:
+
+```
+/reload
+```
+
+[or 一度 `Ctrl+A D` で screen から抜けて、 `screen -r secretary` で入り直す。 reload 系は Claude Code バージョンによって挙動違うことあり、 ダメなら一旦 exit + 再起動が確実]
+
+#### 3. Discord 設定 + ch allowlist
 
 ```
 /discord:configure
 /discord:access
 ```
 
-`access` の方で、秘書と話したいチャンネル（or DM）を allowlist に入れて
-ください。**この操作はターミナルからユーザー自身がやる必要があります**
-（安全上の理由で、AI 側から代行できません）。
+`access` の方で、 秘書と話したいチャンネル（or DM）を allowlist に入れて
+ください。 **この操作はターミナルからユーザー自身がやる必要があります**
+（安全上の理由で、 AI 側から代行できません）。
 
 終わったら `Ctrl+A D` で抜けます。
 
