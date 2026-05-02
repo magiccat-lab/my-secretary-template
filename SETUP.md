@@ -37,30 +37,71 @@ Xserver VPS などを契約した直後の状態から、SSH でログインで�
 なるまでの手順です。既に自分用のユーザーで SSH ログインできる場合は
 「A. 前提パッケージを入れる」まで飛ばしてください。
 
-### 0-1. VPS のコンパネで初期情報を確認
+### 0-1. VPS 契約時に選ぶ項目
 
-Xserver VPS の例:
-- VPS パネル (`https://secure.xserver.ne.jp/xapanel/xvps/`) にログイン
-- 契約中のサーバーを選び、「SSH」または「サーバー情報」を開く
-- 控えるもの:
-  - **IP アドレス**（`xxx.xxx.xxx.xxx`）
-  - **root の初期パスワード**（契約完了メールにも載っています）
+Xserver VPS（or 他 VPS）の契約画面で以下を選びます。
 
-他の VPS サービスでも、「IP アドレス」と「root パスワード」が分かれば OK。
+| 項目 | 推奨設定 |
+|---|---|
+| **OS** | **Ubuntu 24.04 LTS**（本テンプレートの動作確認 OS、 これ以外だと apt パッケージ名等で詰まる場面あり） |
+| プラン | 2GB プラン以上（1GB だと Claude Code が OOM Kill される事故あり、 後述 §L 参照） |
+| 認証方式 | **SSH 鍵認証**（パスワード認証より安全、 Xserver VPS では `key.pem` をダウンロードする方式） |
+| ロケーション | 日本リージョン（cron が JST 前提なので時刻ずれ最小） |
 
-### 0-2. root で初回 SSH ログイン
+契約完了後、 VPS パネルで以下を確認・入手します:
 
-手元の PC のターミナル（Mac / Linux はそのまま、Windows は PowerShell か
-WSL）で以下を実行します。
+- **IP アドレス**（`xxx.xxx.xxx.xxx` 形式）
+- **秘密鍵ファイル**（`key.pem` or `xxx.pem`、 契約画面 or 「SSH」 タブから 1 回だけダウンロード可、 **再ダウンロード不可なので大事に保管**）
+- 初期ユーザー名（Xserver VPS は通常 `root`）
+
+> ⚠️ パスワード認証で契約してしまった人は、 `ssh root@xxx.xxx.xxx.xxx` でパスワード入力ログインも可、 ただし鍵認証の方が安全。 §0-6 で鍵認証に切り替える手順を最後に通る。
+
+他の VPS サービス（Hetzner / Vultr / DigitalOcean 等）でも、 大半が「鍵認証 + key.pem ダウンロード」方式、 同じ手順で動く。
+
+### 0-2. ダウンロードした key.pem を使って SSH 接続
+
+手元 PC（Mac / Linux はそのまま、 Windows は PowerShell か WSL）で作業します。
+
+#### 0-2-1. key.pem を `~/.ssh/` に配置 + 権限絞る
+
+ダウンロードした `key.pem` （or `xxx.pem`）はブラウザの Downloads フォルダ等にある想定。 以下を実行して `~/.ssh/` に置き、 SSH が要求する権限まで絞ります（権限が緩いと `ssh` コマンドが拒否する）。
 
 ```bash
-ssh root@xxx.xxx.xxx.xxx
+mkdir -p ~/.ssh
+mv ~/Downloads/key.pem ~/.ssh/my-vps.pem
+chmod 600 ~/.ssh/my-vps.pem
+```
+
+> 💡 ファイル名は何でも OK、 ただし `~/.ssh/my-vps.pem` のように分かりやすい名前で置くと後で混乱しない。 Windows の場合 Downloads は `C:\Users\YOU\Downloads\` なので `mv "C:\Users\YOU\Downloads\key.pem" ~/.ssh/my-vps.pem` のように調整。
+
+#### 0-2-2. 初回 SSH ログイン
+
+```bash
+ssh -i ~/.ssh/my-vps.pem root@xxx.xxx.xxx.xxx
 ```
 
 - 初回は「続けますか?」と聞かれるので `yes` と入力
-- パスワードを聞かれたら 0-1 で控えた root パスワードを入れる
+- パスフレーズを設定した場合は入力、 設定してなければそのままログイン
+- プロンプトが `root@xxx:~#` のような形に変われば成功
 
-ログインできたら、まずはパッケージを最新にしておきます。
+#### 0-2-3.（毎回打つのを楽にする）SSH config にエイリアス登録
+
+毎回 `-i ~/.ssh/my-vps.pem` を打つのが面倒なら以下を 1 回だけ登録:
+
+```bash
+cat >> ~/.ssh/config <<'EOF'
+Host my-vps
+    HostName xxx.xxx.xxx.xxx
+    User root
+    IdentityFile ~/.ssh/my-vps.pem
+    ServerAliveInterval 60
+EOF
+chmod 600 ~/.ssh/config
+```
+
+これで `ssh my-vps` だけで接続できる。 `xxx.xxx.xxx.xxx` を実際の IP に置き換えて。
+
+#### 0-2-4. ログイン後にパッケージ最新化
 
 ```bash
 apt update && apt upgrade -y
