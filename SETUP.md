@@ -192,9 +192,16 @@ chmod 600 ~/.ssh/config
 apt update && apt upgrade -y
 ```
 
-### 0-3. 一般ユーザーを作成する
+### 0-3. [任意] 一般ユーザーを作成する [セキュリティ強化、 個人 VPS ならスキップ可]
 
-root で作業し続けるのは危険なので、自分用のユーザーを作ります。
+> 💡 **個人開発 VPS なら 0-3 〜 0-6 全部スキップして §A に進んで OK**:
+> - 鍵認証で外部から入れるのは現状 root だけ、 第三者は鍵無いと不可
+> - 一般ユーザー + sudo の構成は会社運用 / 複数人運用の作法、 自分 1 人なら過剰
+> - ただし pip / apt で常に root 権限の状態、 `rm -rf /` 系の typo 1 発で消えるリスクだけ留意
+>
+> 厳格化したい場合は以下を順にやる、 不要なら **§A まで飛ばして OK**。
+
+root で作業し続けるのは危険なので、 自分用のユーザーを作ります。
 ユーザー名は任意です（例では `shun` としますが、好きな名前で OK）。
 
 ```bash
@@ -210,22 +217,42 @@ adduser shun
 usermod -aG sudo shun
 ```
 
-### 0-4. 手元 PC で SSH 鍵を作って VPS に登録する
+### 0-4. 手元 PC の SSH 鍵を一般ユーザーに登録する
 
-パスワードより SSH 鍵の方が安全なので、鍵認証に切り替えます。
-以下は**手元 PC 側**（VPS ではない）で実行します。
+§0-2 で使った `key.pem` を一般ユーザーでも使えるよう、 root の authorized_keys を流用するのが最短。
+
+**VPS 側 [root シェル]** で実行:
+
+```bash
+mkdir -p /home/shun/.ssh
+cp ~/.ssh/authorized_keys /home/shun/.ssh/
+chown -R shun:shun /home/shun/.ssh
+chmod 700 /home/shun/.ssh
+chmod 600 /home/shun/.ssh/authorized_keys
+```
+
+これで手元 PC から既存 `key.pem` で一般ユーザーにログイン可能:
+
+```bash
+# 手元 PC 側
+ssh -i ~/.ssh/my-vps.pem shun@xxx.xxx.xxx.xxx
+```
+
+> ⚠️ **`ssh-copy-id` は手元 PC で叩くコマンド** [手元の公開鍵を VPS に送る仕組み]、 VPS 内 root シェルで叩くと「No identities found」 になる、 これは VPS 上に手元の id_*.pub が無いから。 上の手順は **VPS 側で root の authorized_keys を流用** する経路で、 ssh-copy-id 不要。
+
+#### 0-4-代替: 手元 PC で新規鍵を作って ssh-copy-id [`key.pem` 経由じゃなく従来通りやりたい場合]
 
 すでに `~/.ssh/id_ed25519.pub` がある人はこの作成ステップは不要。
 
 ```bash
+# 手元 PC 側
 ssh-keygen -t ed25519 -C "your-email@example.com"
 ```
 
 - 保存場所は Enter（デフォルトでOK）
 - パスフレーズは空 Enter でも入れても OK（入れた方が安全）
 
-作った公開鍵を VPS の一般ユーザーに登録します。
-**手元 PC 側**で以下を実行:
+作った公開鍵を VPS の一般ユーザーに登録 [手元 PC 側で実行]:
 
 ```bash
 ssh-copy-id shun@xxx.xxx.xxx.xxx
