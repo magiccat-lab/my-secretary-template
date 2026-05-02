@@ -1024,12 +1024,44 @@ curl -s http://localhost:8781/health  # {"status":"ok",...} が返れば OK
 
 ```
 /discord:configure
+```
+
+これで Discord 接続が確立する [bot token を読み込んで Gateway 接続]。
+
+#### 4. ch allowlist の登録 [2 経路、 どっちか]
+
+##### 4-A. 自動 [`.env` 値を使って 1 発設定、 推奨]
+
+screen から `Ctrl+A D` で一旦抜けて、 通常のシェルに戻ってから:
+
+```bash
+python3 ~/secretary/scripts/discord_access_apply_env.py
+```
+
+これで:
+- `DISCORD_CHANNEL_RANDOM` を allowlist に追加
+- `requireMention: false` [mention 不要、 ch のメッセージ全部に応答]
+- `DISCORD_USER_ID` を DM allow にも追加
+
+複数 ch 一括許可したい場合は env で追加:
+```bash
+DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_apply_env.py
+```
+
+設定反映には `screen -r secretary` でセッションに戻って `/reload` [or 一旦 exit + 再起動]
+
+##### 4-B. 対話 [元の方式、 細かく制御したい時]
+
+`screen -r secretary` で秘書のセッションに入った状態で:
+
+```
 /discord:access
 ```
 
-`access` の方で、 秘書と話したいチャンネル（or DM）を allowlist に入れて
-ください。 **この操作はターミナルからユーザー自身がやる必要があります**
-（安全上の理由で、 AI 側から代行できません）。
+→ 対話で許可するチャンネル / DM を 1 つずつ選ぶ
+→ **mention 必須 / 不要** も対話で指定 [allowlist 対象 ch なら mention 不要に倒すのが楽]
+
+> ⚠️ **この操作はターミナルからユーザー自身がやる必要があります**（安全上の理由で、 AI 側から代行できません）
 
 終わったら `Ctrl+A D` で抜けます。
 
