@@ -64,15 +64,39 @@ Xserver VPS（or 他 VPS）の契約画面で以下を選びます。
 
 #### 0-2-1. key.pem を `~/.ssh/` に配置 + 権限絞る
 
-ダウンロードした `key.pem` （or `xxx.pem`）はブラウザの Downloads フォルダ等にある想定。 以下を実行して `~/.ssh/` に置き、 SSH が要求する権限まで絞ります（権限が緩いと `ssh` コマンドが拒否する）。
+ダウンロードした秘密鍵ファイル（VPS により名前が違う、 `key.pem` / `xserver-vps-xxxxx.pem` 等）はブラウザの Downloads フォルダにある想定。 以下を実行して `~/.ssh/` に置き、 SSH が要求する権限まで絞ります（権限が緩いと `ssh` コマンドが拒否する）。
+
+##### まずファイル名を確認
+
+実際にダウンロードされたファイル名を確認 [VPS 側で名前は様々]:
+
+```bash
+# WSL [Windows + Ubuntu] の場合
+ls /mnt/c/Users/$USER/Downloads/*.pem 2>/dev/null
+
+# Mac / Linux ネイティブの場合
+ls ~/Downloads/*.pem 2>/dev/null
+```
+
+→ 表示されたフルパスをコピー、 次の手順で使う
+
+##### `~/.ssh/my-vps.pem` に配置 + 権限設定
 
 ```bash
 mkdir -p ~/.ssh
-mv ~/Downloads/key.pem ~/.ssh/my-vps.pem
+
+# WSL の場合 [<実ファイル名> を上で確認した名前に置換]
+cp /mnt/c/Users/$USER/Downloads/<実ファイル名>.pem ~/.ssh/my-vps.pem
+
+# Mac / Linux ネイティブの場合
+# cp ~/Downloads/<実ファイル名>.pem ~/.ssh/my-vps.pem
+
 chmod 600 ~/.ssh/my-vps.pem
 ```
 
-> 💡 ファイル名は何でも OK、 ただし `~/.ssh/my-vps.pem` のように分かりやすい名前で置くと後で混乱しない。 Windows の場合 Downloads は `C:\Users\YOU\Downloads\` なので `mv "C:\Users\YOU\Downloads\key.pem" ~/.ssh/my-vps.pem` のように調整。
+> 💡 **`mv` じゃなく `cp` を使う**: 秘密鍵は VPS 側で再ダウンロード不可、 元 file を残しておくとバックアップになる。 後で別端末からも接続したい時にもこの元 file が要る。
+>
+> 💡 ファイル名は `~/.ssh/my-vps.pem` のように分かりやすい名前で置くと後で混乱しない。 複数 VPS 持ちなら `~/.ssh/xserver-tokyo.pem` 等で識別する。
 
 #### 0-2-2. 初回 SSH ログイン
 
