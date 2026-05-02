@@ -992,6 +992,20 @@ curl -s http://localhost:8781/health  # {"status":"ok",...} が返れば OK
 中身を覗きたいときは `screen -r secretary` でアタッチ。`Ctrl+A` を押して
 離してから `D` を押すとデタッチ（抜ける）できます。
 
+#### ⚠️ 初回起動時に「Trust this folder?」 prompt が出るので **必ず手動で許可**
+
+```
+screen -r secretary
+```
+
+→ Claude Code が **「Trust this folder?」** 等の prompt を出して、 ユーザーの Enter / "y" 入力を待つ:
+- ここで **Enter or "y"** で許可、 起動完了 [Claude プロンプトに移行] を確認
+- `Ctrl+A D` でデタッチ
+
+これは Claude Code のセキュリティ機構、 公式に skip する方法が無い。 1 回手動で通すと `~/.claude.json` に trust 状態が永続化される、 **以降の `nightly_restart.sh` 等の自動再起動では prompt 出ない**。
+
+> 💡 もし `~/.claude.json` の `trustedProjects` から該当 path が消える [再 install / 別 path に移動 等] と再度 prompt 出る、 その時はもう 1 回手動 Enter で OK。
+
 初回起動直後に Claude Code が `/login` を求めてくることはまずありませんが、
 もし `API Error: 401` 等が出ていたら `screen -r secretary` で `/login` を
 叩いて通してください。
