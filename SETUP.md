@@ -569,17 +569,25 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 
 ##### 方法 A: scp で送る [手元 PC で実行]
 
+> ⚠️ **scp も ssh と同じく `-i` で鍵を指定しないと `Permission denied (publickey)`** で詰む、 §0-2-3 の `~/.ssh/config` エイリアス未設定の場合は明示要。
+
 ```bash
 # Mac / Linux / WSL の bash
-scp ~/Downloads/client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
 
 ```powershell
 # Windows PowerShell native
-scp $HOME\Downloads\client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
 
-[ssh と同じく `-i ~/.ssh/my-vps.pem` で鍵指定が必要な場面あり、 §0-2-3 の `~/.ssh/config` エイリアス経由なら不要]
+##### 方法 A-代替: `~/.ssh/config` 設定済の場合 [§0-2-3 でやってれば]
+
+```bash
+scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/gcal/credentials.json
+```
+
+= alias 経由、 `-i` 不要
 
 ##### 方法 B: nano で貼り付ける [scp が動かない / 確実に楽な方法]
 
