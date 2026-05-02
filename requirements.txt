@@ -1,8 +1,8 @@
-fastapi
-uvicorn
-requests
-python-dotenv
-google-api-python-client
-google-auth
-google-auth-httplib2
-google-auth-oauthlib
+fastapi>=0.110
+uvicorn>=0.29
+requests>=2.31
+python-dotenv>=1.0
+google-api-python-client>=2.120
+google-auth>=2.29
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.2
