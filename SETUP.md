@@ -563,18 +563,58 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 ダウンロードされた `client_secret_xxxxx.json` を、VPS の
 `~/secretary/integrations/gcal/credentials.json` に置きます。
 
-**手元 PC から VPS に送る方法（どちらか1つ）**:
+**手元 PC から VPS に送る方法**:
+
+> ⚠️ **scp は手元 PC で叩くコマンド**、 VPS 内で叩いても VPS 上の `~/Downloads/` を探して not found になる、 ハマるポイント。 VPS から `exit` で抜けて手元 PC に戻ってから叩く [or 別ターミナル開く]。
+
+##### 方法 A: scp で送る [手元 PC で実行]
 
 ```bash
-# 方法A: scp で送る（手元PCで実行）
+# Mac / Linux / WSL の bash
 scp ~/Downloads/client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
 
-```bash
-# 方法B: VPS側で新規作成して中身を貼り付ける
-nano ~/secretary/integrations/gcal/credentials.json
-# DLしたJSONをエディタに丸ごと貼り付け → Ctrl+O → Enter → Ctrl+X
+```powershell
+# Windows PowerShell native
+scp $HOME\Downloads\client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
+
+[ssh と同じく `-i ~/.ssh/my-vps.pem` で鍵指定が必要な場面あり、 §0-2-3 の `~/.ssh/config` エイリアス経由なら不要]
+
+##### 方法 B: nano で貼り付ける [scp が動かない / 確実に楽な方法]
+
+VPS の ryu / shun シェルで:
+
+```bash
+mkdir -p ~/secretary/integrations/gcal/
+nano ~/secretary/integrations/gcal/credentials.json
+```
+
+→ nano エディタが開く
+
+手元 PC の `client_secret_xxxxx.json` を **テキストエディタで開いて全文選択 → コピー** [Windows PowerShell で `Get-Content $HOME\Downloads\client_secret_xxxxx.json | Set-Clipboard` でも OK]、 nano に **貼り付け** [PowerShell + ssh の場合は右クリック or マウスホイール、 WSL なら `Ctrl+Shift+V`]
+
+→ `Ctrl+O` → Enter で保存 → `Ctrl+X` で nano 終了
+
+##### 方法 C: cat heredoc で 1 発で書く [json が短い時]
+
+```bash
+# VPS シェルで実行、 ペーストしてから Enter Ctrl-D
+cat > ~/secretary/integrations/gcal/credentials.json <<'EOF'
+{ "installed": { "client_id": "...", ... } }
+EOF
+```
+
+---
+
+### C3-4-1. credentials.json が置けたか確認
+
+```bash
+ls -la ~/secretary/integrations/gcal/credentials.json
+cat ~/secretary/integrations/gcal/credentials.json | head -3
+```
+
+サイズ ≥ 200 byte + `{ "installed": {` 等の json 開始が見えれば OK。
 
 ### C3-5. 認証フローを走らせる
 
