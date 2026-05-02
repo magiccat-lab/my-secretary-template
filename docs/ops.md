@@ -252,3 +252,158 @@ tail -n 50 /tmp/health_check.log
 tail -n 50 /tmp/task_remind.log
 ```
 トークン伏字で Issue / Discord に貼ってもらう。
+
+### 9.9 Notion 同期が `failed` で出続ける
+専用の切り分け手順は `docs/notion.md` セクション 5 参照。
+よくある原因 4 種:
+- `NOTION_TOKEN` 未設定 / 失効
+- DB ID 間違い（URL から取り直す）
+- Integration を DB に許可してない（DB 右上「…」→ Add connections）
+- DB プロパティ名 / 型のミス（`docs/notion.md` §3 のスキーマと完全一致が必要）
+
+### 9.10 `database is locked` エラー（SQLite）
+`error_db.py` / `metrics_db.py` / `state_store.py` は SQLite に書く。同時実行が
+競合するとロックが長引いて読み書き失敗することがある。
+
+```bash
+ls -la ~/secretary/data/*.db          # サイズが急に膨らんでないか
+fuser ~/secretary/data/errors.db       # どのプロセスが掴んでるか
+```
+
+対処:
+- 短期: 該当 cron を 1 分ずらして再発回避
+- 中期: スクリプト側で `timeout=10` を `connect()` に渡す（テンプレ既定 5 秒）
+- 長期: WAL モードに切替（`PRAGMA journal_mode=WAL;`）
+
+### 9.11 cron が動いた形跡が無い
+```bash
+sudo grep CRON /var/log/syslog | tail -n 30
+crontab -l                  # 自分の crontab 一覧
+ls -la /tmp/*.log           # ログがそもそも作られてるか
+```
+
+cron は出力がリダイレクトされてないと黙って消える。`>> /tmp/xxx.log 2>&1` を
+**全行に必ず付ける**（`docs/cron.md` §3）。
+
+### 9.12 Disk が満杯
+```bash
+df -h /                    # / の使用率
+du -sh /tmp/* | sort -h | tail -n 20  # /tmp 巨大ファイル特定
+du -sh ~/secretary/data/* | sort -h   # data 内の肥大化を確認
+```
+
+応急処置:
+```bash
+# 古いログを圧縮 or 削除
+find /tmp -name "*.log" -mtime +7 -delete
+
+# error_db / metrics_db を 30 日でクリーンアップ
+python3 ~/secretary/scripts/lib/error_db.py cleanup --days 30
+python3 ~/secretary/scripts/lib/metrics_db.py cleanup --days 30
+```
+
+### 9.13 Claude プロセスが OOM Kill された
+```bash
+sudo dmesg | grep -i "killed process" | tail
+free -h                    # メモリ残量
+```
+
+VPS の RAM が 1GB 程度だと長時間 Claude session が肥大化して落ちることがある。
+
+対処:
+- 週次再起動（`scripts/weekly_restart.sh`）を有効化
+- swap を作る:
+  ```bash
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  ```
+
+### 9.14 Discord に投稿が届かない（rate limit）
+Discord は 1 channel あたり 5 msg / 5 sec が目安。短時間に通知が集中すると
+silent drop or 429。
+
+```bash
+grep -i "rate" /tmp/*.log | tail
+```
+
+対処:
+- バースト送信は `time.sleep(1.0)` を挟む
+- どうしても多い時は別 channel に分散
+
+### 9.15 VPS 再起動後に自動起動させたい
+`start_server.sh` を起動時に走らせる:
+
+**方法 A: `crontab @reboot`（簡単）**
+```bash
+crontab -e
+# 末尾に追加
+@reboot /bin/bash /home/YOUR_USER/secretary/start_server.sh >> /tmp/boot.log 2>&1
+```
+
+**方法 B: systemd user service（堅牢）**
+```bash
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/secretary.service <<'EOF'
+[Unit]
+Description=secretary screen session
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash %h/secretary/start_server.sh
+ExecStop=/usr/bin/screen -S secretary -X quit
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now secretary.service
+loginctl enable-linger $USER   # ユーザーがログアウトしてても起動するように
+```
+
+### 9.16 全部おかしくなった、どこから取り戻すか
+落ち着いて以下の順:
+
+1. **secret は無事か確認**
+   ```bash
+   ls -la ~/secretary/.env ~/secretary/integrations/*/credentials.json ~/secretary/integrations/*/token.json
+   ```
+   全部消えていなければ復旧可能。
+
+2. **ローカル変更を退避**
+   ```bash
+   cd ~/secretary
+   git stash push -u -m "panic-stash-$(date +%F)"
+   ```
+
+3. **clean な状態に戻す**
+   ```bash
+   git fetch origin
+   git reset --hard origin/main
+   ```
+
+4. **依存を入れ直す**
+   ```bash
+   pip install --break-system-packages -r requirements.txt
+   ```
+
+5. **起動して `/login` 通す**
+   ```bash
+   bash ~/secretary/start_server.sh
+   screen -r secretary
+   # 中で /login → 終わったら Ctrl+A D
+   ```
+
+6. **退避した変更を見て、必要なら戻す**
+   ```bash
+   git stash list
+   git stash show -p stash@{0}     # 中身確認
+   git stash pop                   # 戻す
+   ```
+
+> ⚠️ `git reset --hard` は破壊的。実行前に必ず `git stash` で退避してください。

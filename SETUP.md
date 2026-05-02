@@ -177,30 +177,72 @@ sudo ufw enable
 
 ## B. Claude Code をインストール
 
-Claude Code 本体を入れます。
+Claude Code は bun または npm で配布されています。**素人がハマる定番ポイント**
+なので順番にやってください。
+
+### B-1. bun ランタイムを入れる
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
-# シェルを再読み込み（PATH を通すため）
-source ~/.bashrc
-
-bun install -g @anthropic-ai/claude-code
 ```
 
-bun が使いたくなければ npm でも OK です。
+完了すると `~/.bun/bin/` に bun コマンドが置かれます。
+
+### B-2. PATH を通して bun が呼べることを確認
 
 ```bash
-# 代替: npm install -g @anthropic-ai/claude-code
+source ~/.bashrc
+which bun
 ```
 
-インストール後、一度だけログインフローを通します。
+**`/home/あなたのユーザー名/.bun/bin/bun` のような行が出れば OK。**
+
+`which bun` が**何も返さない** or `not found` と言われたら、PATH が通って
+いません。以下を手動で叩いてください:
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
+which bun
+```
+
+> 💡 それでも出ない場合は **一度 SSH を切って入り直す**（`exit` → 再度 `ssh shun@xxx.xxx.xxx.xxx`）。
+> shell の起動時に `.bashrc` が読み直されるので、これで通ることが多いです。
+
+### B-3. bun 経由で Claude Code を入れる
+
+```bash
+bun install -g @anthropic-ai/claude-code
+which claude
+```
+
+`/home/あなたのユーザー名/.bun/bin/claude` が出れば成功です。
+
+### B-4.（うまくいかなかった場合）npm で代替インストール
+
+bun のインストールやパス通しがどうしても通らないときは npm に切り替えます。
+
+```bash
+sudo apt install -y nodejs npm
+sudo npm install -g @anthropic-ai/claude-code
+which claude
+```
+
+`/usr/bin/claude` あるいは `/usr/local/bin/claude` が出れば成功。
+
+### B-5. ログインフローを通す
 
 ```bash
 claude
 ```
 
-起動したら `/login` と打って、表示される URL をブラウザで開き、Claude の
-アカウントで認証してください。ログインが終わったら `/exit` で一度抜けます。
+起動したら `/login` と打って、表示される URL を**手元の PC のブラウザ**で開き、
+Claude のアカウントで認証してください（VPS 上にブラウザは無いので、URL を
+コピーして自分の Mac/Windows で開く）。
+
+ログインが終わったら `/exit` で一度抜けます。
+
+> ✅ ここまでで `claude --version` が動けば B 完了。次は C へ進みます。
 
 ---
 
@@ -526,6 +568,138 @@ chmod 600 ~/secretary/.env
 
 > Google カレンダーや Gmail、Sheets、Brave 検索はいまは空欄でOKです。後で
 > 秘書本人に頼めばセットアップしてくれます（その時に値が追加されます）。
+
+---
+
+## G2. Notion 連携（タスク・Wishlist を Notion で管理する、任意）
+
+タスク（`pending_tasks.json`）と「行きたい店リスト」「読みたい本リスト」を
+Notion DB に同期して、スマホからも見られるようにします。Notion の無料プラン
+で十分動きます。**使わない人はこのセクション全部スキップして H に進んで OK。**
+
+### G2-1. Notion Integration を作る
+
+ブラウザ作業:
+
+1. https://www.notion.so/my-integrations を開く
+2. `+ New integration` をクリック
+3. 名前を適当に（例: `my-secretary`）
+4. 関連付ける Workspace は自分の personal を選ぶ
+5. `Type` は **`Internal`** を選択
+6. `Submit` をクリック
+7. 表示された **`Internal Integration Secret`** （`secret_xxxx...` で始まる
+   長い文字列）をコピーして安全な場所にメモ（これが `NOTION_TOKEN`）
+
+### G2-2. Notion DB（Tasks 用）を作る
+
+別タブで Notion を開いて作業:
+
+1. 自分のワークスペースの好きなページに `/database` と入力
+2. メニューから **`Database - Full page`** を選ぶ
+3. ページタイトルを `Tasks` 等に変更
+4. デフォルトの `Name` プロパティ（title）はそのまま
+5. 右上の `+` で以下のプロパティを順に追加（**全部必須**、型を間違えると同期失敗）:
+
+| プロパティ名 | 型 |
+|---|---|
+| `Done` | Checkbox |
+| `SourceKey` | Text（rich_text） |
+| `Created` | Date |
+| `Completed` | Date |
+| `Remind` | Date |
+| `Detail` | Text（rich_text） |
+| `Type` | Select（任意。あると便利） |
+
+### G2-3. Integration を DB に許可する
+
+このステップを忘れると API が 403 で弾かれます。
+
+1. Tasks DB ページの右上「**…**」メニューを開く
+2. `Connections` または `+ Add connections` をクリック
+3. `Connect to` の検索窓に G2-1 で作った Integration 名を打って選択
+4. 確認ダイアログで `Confirm`
+
+### G2-4. Tasks DB の ID を取得
+
+Tasks DB ページのブラウザ URL を見ます。例:
+
+```
+https://www.notion.so/USERNAME/Tasks-7c2c9b3a4f1e44d8a9f2e8b1d0c7e6f3?v=...
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                       この 32 文字が DB ID
+```
+
+`Tasks-` の **直後** から `?v=` の **直前** までの 32 文字（ハイフン無し）が
+DB ID です。コピーしてメモ。
+
+### G2-5. Wishlist DB も同じ手順で作る（任意）
+
+「行きたい店」「欲しい本」「あとで読みたい記事」用に別 DB を 1 個。
+G2-2 と同じ要領で `Wishlist` DB を作り、プロパティを以下に揃えます:
+
+| プロパティ名 | 型 |
+|---|---|
+| `名前` | Title（デフォルト） |
+| `カテゴリ` | Select（飲食店 / Tips / ショッピング 等） |
+| `ステータス` | Select（未訪問 / 行った / 不要 等） |
+| `エリア` | Text |
+| `情報源` | URL or Text |
+| `メモ` | Text |
+| `追加日` | Date |
+
+G2-3, G2-4 を同様に行って、ID をメモします。
+
+### G2-6. `.env` に追記
+
+VPS 側で:
+
+```bash
+nano ~/secretary/.env
+```
+
+ファイル末尾に追記して保存（`Ctrl+O` → Enter → `Ctrl+X`）:
+
+```
+NOTION_TOKEN=secret_paste_here
+NOTION_DB_TASKS=paste_tasks_db_id_here
+NOTION_DB_WISHLIST=paste_wishlist_db_id_here
+```
+
+### G2-7. 同期スクリプトを 1 回手動実行して確認
+
+```bash
+python3 ~/secretary/scripts/integrations/notion/sync_pending_to_notion.py
+```
+
+`✅ sync 完了: created=N / updated=M / failed=0` のような行が出れば成功。
+Notion の Tasks DB を見ると、ローカルの pending_tasks.json の中身が反映
+されているはずです。
+
+### G2-8. 5 分おきに自動同期する cron を追加
+
+```bash
+crontab -e
+```
+
+末尾に 1 行追加（`YOUR_USER` を自分のユーザー名に書き換え）:
+
+```
+*/5 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_notion.log 2>&1
+```
+
+> ⚠️ `python3` ではなく **絶対パスの `/usr/bin/python3`** を使うこと。
+> cron の PATH には `python3` が無いことがあります。
+
+### G2-9. Wishlist 追加コマンドの動作確認（任意）
+
+```bash
+python3 ~/secretary/scripts/integrations/notion/wishlist_add.py \
+  --name "テスト追加" --category "Tips" --memo "セットアップ確認"
+```
+
+`✅ 追加成功` が出れば OK。Notion の Wishlist DB に新規ページが見えるはず。
+
+ここまで終わったら H に進みます。
 
 ---
 

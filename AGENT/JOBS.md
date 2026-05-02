@@ -50,6 +50,18 @@
 - Env: `GMAIL_ENABLED=true`
 - 自動返信のフィルタ、Google Docs のサイレントアーカイブ付き。
 
+### Notion 同期（Tasks）
+- スクリプト: `scripts/integrations/notion/sync_pending_to_notion.py`
+- Cron: `*/5 * * * *`
+- Env: `NOTION_TOKEN`, `NOTION_DB_TASKS`
+- `data/pending_tasks.json` を Notion DB に片方向同期（5 分間隔）。
+- セットアップは `SETUP.md` G2 / 詳細 `docs/notion.md` 参照。
+
+### Wishlist 追加（オンデマンド）
+- スクリプト: `scripts/integrations/notion/wishlist_add.py`
+- Cron: なし（会話駆動。エージェントが「〇〇記録して」を受けたら CLI 実行）
+- Env: `NOTION_TOKEN`, `NOTION_DB_WISHLIST`
+
 ---
 
 ## サンプルジョブ（実装例・コピペして使う）
