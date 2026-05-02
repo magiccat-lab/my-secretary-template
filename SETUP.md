@@ -60,7 +60,17 @@ Xserver VPS（or 他 VPS）の契約画面で以下を選びます。
 
 ### 0-2. ダウンロードした key.pem を使って SSH 接続
 
-手元 PC（Mac / Linux はそのまま、 Windows は PowerShell か WSL）で作業します。
+手元 PC で作業します。 環境を最初に決める:
+
+| 環境 | 使う shell | 利点 | 欠点 |
+|---|---|---|---|
+| **Mac / Linux ネイティブ** | bash / zsh | このテンプレのコマンドそのまま動く | — |
+| **Windows + WSL2 (Ubuntu)** | bash | このテンプレのコマンドそのまま動く、 開発体験も Linux と同等 | WSL 経由のパス変換 [`/mnt/c/Users/...`] を最初だけ覚える |
+| **Windows PowerShell native** | PowerShell | WSL 入れずに動く | `chmod` 等の Linux コマンドが無い、 別構文 [`icacls`] が必要、 後の手順でも WSL or 別ターミナル必須になる場面あり |
+
+> 💡 **Windows なら WSL 推奨**、 後の手順 [B. Claude Code の bun install / cron セットアップ等] も bash 前提。 「とりあえず PowerShell」 で進めると後でハマる。 WSL2 + Ubuntu インストールは Microsoft Store から 5 分で済む。
+>
+> 既に PowerShell で進めてしまった場合の救済手順は §0-2-1 末尾参照。
 
 #### 0-2-1. key.pem を `~/.ssh/` に配置 + 権限絞る
 
@@ -97,6 +107,25 @@ chmod 600 ~/.ssh/my-vps.pem
 > 💡 **`mv` じゃなく `cp` を使う**: 秘密鍵は VPS 側で再ダウンロード不可、 元 file を残しておくとバックアップになる。 後で別端末からも接続したい時にもこの元 file が要る。
 >
 > 💡 ファイル名は `~/.ssh/my-vps.pem` のように分かりやすい名前で置くと後で混乱しない。 複数 VPS 持ちなら `~/.ssh/xserver-tokyo.pem` 等で識別する。
+
+##### Windows PowerShell native の救済 [WSL 使えない / 使いたくない場合]
+
+PowerShell には `chmod` が無いので、 SSH 鍵の権限設定は `icacls` を使う:
+
+```powershell
+# Move-Item は PowerShell でも動く、 mv alias でも OK
+Move-Item ~/Downloads/key.pem ~/.ssh/my-vps.pem
+
+# chmod 600 相当: 継承を切って自分だけ読み取り権限
+$keyPath = "$HOME\.ssh\my-vps.pem"
+icacls $keyPath /inheritance:r
+icacls $keyPath /grant:r "$($env:USERNAME):(R)"
+
+# SSH 接続テスト
+ssh -i $HOME\.ssh\my-vps.pem root@xxx.xxx.xxx.xxx
+```
+
+> ⚠️ ただし **後の手順 [B. Claude Code install、 §A の apt 系、 cron 系] は bash 前提**、 PowerShell native だと詰まる。 SSH で VPS 側に入った後は VPS 上で bash が動くので OK だが、 「手元 PC 側で」 何か叩く時は WSL に切り替えるのが楽。
 
 #### 0-2-2. 初回 SSH ログイン
 
