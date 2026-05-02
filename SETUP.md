@@ -58,6 +58,38 @@ Xserver VPS（or 他 VPS）の契約画面で以下を選びます。
 
 他の VPS サービス（Hetzner / Vultr / DigitalOcean 等）でも、 大半が「鍵認証 + key.pem ダウンロード」方式、 同じ手順で動く。
 
+#### 0-1-2. パケットフィルタで SSH [port 22] を許可する [Xserver VPS 必須]
+
+> ⚠️ **これを先にやらないと §0-2 の SSH 接続が `Connection timed out` で詰む**、 contracts する人が高頻度で踏むハマりポイント。
+
+Xserver VPS のデフォルトは **パケットフィルタが有効 + SSH [22] が許可されてない** ことが多い:
+
+1. Xserver VPS パネル → 該当サーバー → **「パケットフィルタ設定」** タブ
+2. 現在の設定を確認:
+   - 「Web」「Mail」 等の template だけ ON で **SSH [22] 含まれてない**ことが多い
+3. **「SSH」 を許可** にチェック ON [or「すべて許可」 で一時的にフルオープン]
+4. 設定を保存、 反映に 1-2 分
+
+> 💡 「すべて許可」 で進めると後でセキュリティ意識して個別 ON に絞り直すのを忘れがち、 最初から **「SSH」 のみ ON** が筋。 後の手順 [§I で `webhook_server` を立てる] で port 8781 を追加で開ける場面もあるので、 そこは別途。
+
+到達性確認 [PowerShell or bash いずれでも]:
+
+```powershell
+# PowerShell
+Test-NetConnection -ComputerName xxx.xxx.xxx.xxx -Port 22
+# → TcpTestSucceeded : True なら通る
+```
+
+```bash
+# Mac / Linux / WSL
+nc -zv xxx.xxx.xxx.xxx 22
+# → "Connection ... succeeded!" なら通る
+```
+
+→ ここで通らなければパケットフィルタ未開放、 VPS パネル戻って確認。
+
+他 VPS [Hetzner / Vultr / DigitalOcean] では「Firewall」「Security Group」 等の名前で同等機能、 同じく SSH [22] 許可を確認する。
+
 ### 0-2. ダウンロードした key.pem を使って SSH 接続
 
 手元 PC で作業します。 環境を最初に決める:
