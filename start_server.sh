@@ -16,7 +16,13 @@ lsof -ti:8781 2>/dev/null | xargs kill -9 2>/dev/null
 sleep 1
 
 # Claude Code を screen セッションで起動（Discord プラグイン付き）
-screen -dmS secretary bash -c 'claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official'
+# cwd を $SECRETARY_DIR に固定する理由:
+#   - CLAUDE.md の `@AGENT/IDENTITY.md` 等の相対 import が cwd 基準で解決されるため
+#   - `~/.claude.json` の trust path が cwd と一致してないと毎回 Trust prompt が出るため
+# expect wrapper を経由する理由:
+#   - 初回起動時の Bypass Permissions 確認 + Trust this folder ダイアログを自動 accept する
+#   - 既に accept 済なら expect は何もせず素通り（要 prereq: apt install expect）
+screen -dmS secretary bash -c "cd $SECRETARY_DIR && expect $SECRETARY_DIR/scripts/claude_wrapper.exp"
 sleep 2
 
 SECRETARY_SESSION=$(screen -ls | grep secretary | head -1 | awk '{print $1}')

@@ -308,8 +308,10 @@ SSH でログインして、以下をそのままコピペして実行します�
 
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-pip git screen curl lsof at tmux unzip
+sudo apt install -y python3 python3-pip git screen curl lsof at tmux unzip expect
 ```
+
+> 💡 `expect` は Claude Code の初回起動時に出る UI prompt [Bypass Permissions / Trust this folder] を自動 accept する wrapper [`scripts/claude_wrapper.exp`] が使うので、 入ってないと cron 自動再起動が prompt で詰まる。 必須。
 
 次にタイムゾーンを日本時間に合わせます（cron の時刻が JST 前提で書かれて
 いるため）。
@@ -992,19 +994,19 @@ curl -s http://localhost:8781/health  # {"status":"ok",...} が返れば OK
 中身を覗きたいときは `screen -r secretary` でアタッチ。`Ctrl+A` を押して
 離してから `D` を押すとデタッチ（抜ける）できます。
 
-#### ⚠️ 初回起動時に「Trust this folder?」 prompt が出るので **必ず手動で許可**
+#### ✅ 初回起動の UI 壁 [Bypass Permissions / Trust this folder] は **自動突破される**
 
-```
-screen -r secretary
-```
+Claude Code は起動時に 2 種類の UI prompt を出す:
+- **壁1**: `--dangerously-skip-permissions` 起動時の `Bypass Permissions` 確認 [初回のみ、 下矢印 + Enter で accept]
+- **壁2**: `Trust this folder?` ダイアログ [初回のみ、 Enter で accept]
 
-→ Claude Code が **「Trust this folder?」** 等の prompt を出して、 ユーザーの Enter / "y" 入力を待つ:
-- ここで **Enter or "y"** で許可、 起動完了 [Claude プロンプトに移行] を確認
-- `Ctrl+A D` でデタッチ
+このテンプレートでは `scripts/claude_wrapper.exp` [expect script] が両方を自動 accept するので、 **手動 attach は不要**。 §A で `apt install expect` 入れていれば、 `start_server.sh` / `weekly_restart.sh` は壁を素通りで起動する。
 
-これは Claude Code のセキュリティ機構、 公式に skip する方法が無い。 1 回手動で通すと `~/.claude.json` に trust 状態が永続化される、 **以降の `nightly_restart.sh` 等の自動再起動では prompt 出ない**。
-
-> 💡 もし `~/.claude.json` の `trustedProjects` から該当 path が消える [再 install / 別 path に移動 等] と再度 prompt 出る、 その時はもう 1 回手動 Enter で OK。
+> 💡 受諾状態は `~/.claude.json` の `projects[$HOME/secretary].hasTrustDialogAccepted` に永続化される、 2 回目以降は expect も即抜ける [timeout=30s]。
+>
+> 💡 中身を覗きたい時は `screen -r secretary` でアタッチ可、 `Ctrl+A` を押して離してから `D` でデタッチ。
+>
+> 💡 自動化の仕組み詳細は [ペパボの記事](https://zenn.dev/pepabo/articles/claude-code-cron-autonomous-ui-walls) 参照。
 
 初回起動直後に Claude Code が `/login` を求めてくることはまずありませんが、
 もし `API Error: 401` 等が出ていたら `screen -r secretary` で `/login` を

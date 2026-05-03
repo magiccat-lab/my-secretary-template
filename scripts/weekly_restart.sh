@@ -67,7 +67,9 @@ for attempt in 1 2 3; do
     screen -S secretary -X quit 2>/dev/null
     sleep 1
 
-    screen -dmS secretary bash -c "export HOME=$HOME && cd $HOME/secretary && claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official"
+    # expect wrapper を経由して Bypass Permissions / Trust folder の UI 壁を自動 accept
+    # cwd 固定は CLAUDE.md の相対 import [@AGENT/IDENTITY.md 等] の解決にも必須
+    screen -dmS secretary bash -c "export HOME=$HOME && cd $HOME/secretary && expect $HOME/secretary/scripts/claude_wrapper.exp"
     sleep 2
 
     elapsed=0
