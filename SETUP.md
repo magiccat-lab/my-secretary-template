@@ -202,10 +202,10 @@ apt update && apt upgrade -y
 > 厳格化したい場合は以下を順にやる、 不要なら **§A まで飛ばして OK**。
 
 root で作業し続けるのは危険なので、 自分用のユーザーを作ります。
-ユーザー名は任意です（例では `shun` としますが、好きな名前で OK）。
+ユーザー名は任意です（例では `myname` としますが、好きな名前で OK）。
 
 ```bash
-adduser shun
+adduser myname
 ```
 
 - パスワードを 2 回聞かれるので決めて入力
@@ -214,7 +214,7 @@ adduser shun
 次に sudo 権限（管理者コマンドを使える権限）を付与します。
 
 ```bash
-usermod -aG sudo shun
+usermod -aG sudo myname
 ```
 
 ### 0-4. 手元 PC の SSH 鍵を一般ユーザーに登録する
@@ -224,18 +224,18 @@ usermod -aG sudo shun
 **VPS 側 [root シェル]** で実行:
 
 ```bash
-mkdir -p /home/shun/.ssh
-cp ~/.ssh/authorized_keys /home/shun/.ssh/
-chown -R shun:shun /home/shun/.ssh
-chmod 700 /home/shun/.ssh
-chmod 600 /home/shun/.ssh/authorized_keys
+mkdir -p /home/myname/.ssh
+cp ~/.ssh/authorized_keys /home/myname/.ssh/
+chown -R myname:myname /home/myname/.ssh
+chmod 700 /home/myname/.ssh
+chmod 600 /home/myname/.ssh/authorized_keys
 ```
 
 これで手元 PC から既存 `key.pem` で一般ユーザーにログイン可能:
 
 ```bash
 # 手元 PC 側
-ssh -i ~/.ssh/my-vps.pem shun@xxx.xxx.xxx.xxx
+ssh -i ~/.ssh/my-vps.pem myname@xxx.xxx.xxx.xxx
 ```
 
 > ⚠️ **`ssh-copy-id` は手元 PC で叩くコマンド** [手元の公開鍵を VPS に送る仕組み]、 VPS 内 root シェルで叩くと「No identities found」 になる、 これは VPS 上に手元の id_*.pub が無いから。 上の手順は **VPS 側で root の authorized_keys を流用** する経路で、 ssh-copy-id 不要。
@@ -255,15 +255,15 @@ ssh-keygen -t ed25519 -C "your-email@example.com"
 作った公開鍵を VPS の一般ユーザーに登録 [手元 PC 側で実行]:
 
 ```bash
-ssh-copy-id shun@xxx.xxx.xxx.xxx
+ssh-copy-id myname@xxx.xxx.xxx.xxx
 ```
 
-パスワードを聞かれたら 0-3 で決めた `shun` のパスワードを入力。
+パスワードを聞かれたら 0-3 で決めた `myname` のパスワードを入力。
 
 ### 0-5. 一般ユーザーで入り直して動作確認
 
 ```bash
-ssh shun@xxx.xxx.xxx.xxx
+ssh myname@xxx.xxx.xxx.xxx
 ```
 
 今度はパスワードを聞かれずにログインできれば成功。
@@ -361,7 +361,7 @@ echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
 which bun
 ```
 
-> 💡 それでも出ない場合は **一度 SSH を切って入り直す**（`exit` → 再度 `ssh shun@xxx.xxx.xxx.xxx`）。
+> 💡 それでも出ない場合は **一度 SSH を切って入り直す**（`exit` → 再度 `ssh myname@xxx.xxx.xxx.xxx`）。
 > shell の起動時に `.bashrc` が読み直されるので、これで通ることが多いです。
 
 ### B-3. bun 経由で Claude Code を入れる
@@ -575,12 +575,12 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 
 ```bash
 # Mac / Linux / WSL の bash
-scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
 
 ```powershell
 # Windows PowerShell native
-scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json shun@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
 ```
 
 ##### 方法 A-代替: `~/.ssh/config` 設定済の場合 [§0-2-3 でやってれば]
@@ -593,7 +593,7 @@ scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/gcal/cr
 
 ##### 方法 B: nano で貼り付ける [scp が動かない / 確実に楽な方法]
 
-VPS の ryu / shun シェルで:
+VPS の ryu / myname シェルで:
 
 ```bash
 mkdir -p ~/secretary/integrations/gcal/
@@ -1192,7 +1192,52 @@ ls -la ~/secretary/.env
 ls -la ~/.claude/channels/discord/.env
 ```
 
-### 8. 何もわからない
+### 8. PowerShell で `ssh -i $HOME\.ssh\xxx.pem ...` が `not accessible: No such file or directory` で詰まる
+
+PowerShell では `$HOME.ssh\xxx.pem` のように **`$HOME` の直後にバックスラッシュ無し**で繋げると、 `$HOME` 変数の `.ssh` プロパティとして解釈されて空文字列になる。 結果 `\xxx.pem` だけ見に行って notfound エラー。
+
+```
+PS C:\Users\YOUR_USER> ssh -i $HOME.ssh\my-vps.pem user@xxx.xxx.xxx.xxx
+Warning: Identity file \my-vps.pem not accessible: No such file or directory.
+```
+
+対処は **絶対 path で叩く** か、 **ダブルクォートで囲んで `\` を入れる**:
+
+```powershell
+# 絶対 path [確実]
+ssh -i C:\Users\YOUR_USER\.ssh\my-vps.pem user@xxx.xxx.xxx.xxx
+
+# `${HOME}` で変数を明示囲む or `"$HOME\.ssh\..."` でクォート + `\` 入れる
+ssh -i "$HOME\.ssh\my-vps.pem" user@xxx.xxx.xxx.xxx
+```
+
+### 9. `screen -list` が `No Sockets found in /run/screen/S-USER` で起動失敗する
+
+`bash scripts/daily_restart.sh` 等で起動したのに `screen -list` で何も出ない場合、 起動コマンドの中身 [expect script 等] が即落ちして screen も死んでる可能性が高い。
+
+切り分け: **expect script を直叩き**して error 出てないか確認:
+
+```bash
+cd ~/secretary
+expect scripts/claude_wrapper.exp
+```
+
+過去事例: `-re "Bypass.*[Pp]ermissions"` のように regex を **ダブルクォート** で囲むと、 expect/tcl が `[Pp]` を **command substitution** と解釈して `invalid command name "Pp"` で即落ちした [tcl の `[]` は command 実行扱い]。 修正: regex は `{...}` で囲む。
+
+```expect
+# NG [tcl が [Pp] を command と解釈して落ちる]
+-re "Bypass.*[Pp]ermissions" { ... }
+
+# OK [{} で囲んで literal として扱わせる]
+-re {Bypass.*[Pp]ermissions} { ... }
+```
+
+その他の即落ち原因:
+- `claude` バイナリが PATH に無い [`which claude` で確認、 無ければ `~/.bun/bin/claude` 等を export]
+- `expect` パッケージが入ってない [`apt install expect`]
+- script に実行権限が無い [`chmod +x scripts/claude_wrapper.exp`]
+
+### 10. 何もわからない
 
 秘書が動いているなら、Discord で「〇〇が壊れた、直して」と頼んでください。
 秘書自身が `docs/ops.md` を読みながら切り分けを手伝います。
