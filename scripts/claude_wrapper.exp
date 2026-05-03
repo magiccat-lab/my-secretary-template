@@ -17,17 +17,19 @@ eval spawn claude --dangerously-skip-permissions --channels plugin:discord@claud
 # 壁1 [Bypass Permissions 確認] と壁2 [Trust this folder] を順不同で待つ
 # 通常 accept 済なら即起動完了 prompt に到達 → timeout で抜ける
 expect {
-    -re "Bypass.*[Pp]ermissions" {
+    -re {Bypass.*[Pp]ermissions} {
         # 「Yes, I accept」を選択するため下矢印 + Enter
+        # 注: expect/tcl では文字列内 `[]` が command substitution と解釈されるため、
+        # regex は `{}` で囲んで literal として渡す。 send 引数の `\[` はエスケープ済 `[` で OK。
         send "\033\[B"
         send "\r"
         exp_continue
     }
-    -re "[Tt]rust.*folder" {
+    -re {[Tt]rust.*folder} {
         send "\r"
         exp_continue
     }
-    -re "Welcome to Claude Code|Try.*help|Tip:|❯" {
+    -re {Welcome to Claude Code|Try.*help|Tip:|❯} {
         # 起動完了プロンプトを検知、 抜ける
     }
     timeout {
