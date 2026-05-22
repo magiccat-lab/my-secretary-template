@@ -1,0 +1,103 @@
+{
+  "title": "Script Invocations",
+  "env": "NOTION_DB_SCRIPT_INVOCATIONS",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "ScriptPath": {
+      "rich_text": {}
+    },
+    "Args": {
+      "rich_text": {}
+    },
+    "StartedAt": {
+      "date": {}
+    },
+    "FinishedAt": {
+      "date": {}
+    },
+    "ExitCode": {
+      "number": {
+        "format": "number"
+      }
+    },
+    "RuntimeMs": {
+      "number": {
+        "format": "number"
+      }
+    },
+    "TraceId": {
+      "rich_text": {}
+    }
+  }
+}

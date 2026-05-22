@@ -1,0 +1,126 @@
+{
+  "title": "Action Log",
+  "env": "NOTION_DB_ACTION_LOG",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "ActionType": {
+      "select": {
+        "options": [
+          {
+            "name": "read"
+          },
+          {
+            "name": "write"
+          },
+          {
+            "name": "send"
+          },
+          {
+            "name": "sync"
+          },
+          {
+            "name": "delete"
+          },
+          {
+            "name": "recommend"
+          }
+        ]
+      }
+    },
+    "Target": {
+      "rich_text": {}
+    },
+    "Result": {
+      "select": {
+        "options": [
+          {
+            "name": "success"
+          },
+          {
+            "name": "skipped"
+          },
+          {
+            "name": "failed"
+          }
+        ]
+      }
+    },
+    "Reason": {
+      "rich_text": {}
+    },
+    "TraceId": {
+      "rich_text": {}
+    }
+  }
+}

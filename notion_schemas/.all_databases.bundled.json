@@ -1,0 +1,77 @@
+{
+  "common": {
+    "Title": {"title": {}},
+    "SourceKey": {"rich_text": {}},
+    "Status": {"select": {"options": [{"name": "new"}, {"name": "active"}, {"name": "done"}, {"name": "error"}, {"name": "archived"}]}},
+    "Owner": {"rich_text": {}},
+    "CreatedAt": {"date": {}},
+    "UpdatedAt": {"date": {}},
+    "Source": {"select": {"options": [{"name": "local"}, {"name": "discord"}, {"name": "cron"}, {"name": "script"}, {"name": "manual"}, {"name": "google"}, {"name": "notion"}]}},
+    "ExternalId": {"rich_text": {}},
+    "ContentHash": {"rich_text": {}},
+    "Archived": {"checkbox": {}}
+  },
+  "Tasks": {
+    "DueAt": {"date": {}},
+    "Priority": {"select": {"options": [{"name": "low"}, {"name": "normal"}, {"name": "high"}, {"name": "urgent"}]}},
+    "Tags": {"multi_select": {}},
+    "Detail": {"rich_text": {}},
+    "ReminderAt": {"date": {}},
+    "CompletedAt": {"date": {}}
+  },
+  "Cron Invocations": {
+    "JobName": {"rich_text": {}},
+    "Command": {"rich_text": {}},
+    "StartedAt": {"date": {}},
+    "FinishedAt": {"date": {}},
+    "ExitCode": {"number": {"format": "number"}},
+    "StdoutTail": {"rich_text": {}},
+    "StderrTail": {"rich_text": {}}
+  },
+  "Script Invocations": {
+    "ScriptPath": {"rich_text": {}},
+    "Args": {"rich_text": {}},
+    "StartedAt": {"date": {}},
+    "FinishedAt": {"date": {}},
+    "ExitCode": {"number": {"format": "number"}},
+    "RuntimeMs": {"number": {"format": "number"}},
+    "TraceId": {"rich_text": {}}
+  },
+  "Memory": {
+    "Kind": {"select": {"options": [{"name": "preference"}, {"name": "fact"}, {"name": "decision"}, {"name": "style"}, {"name": "constraint"}]}},
+    "Confidence": {"number": {"format": "percent"}},
+    "Summary": {"rich_text": {}},
+    "Evidence": {"rich_text": {}},
+    "ExpiresAt": {"date": {}}
+  },
+  "Channel": {
+    "Platform": {"select": {"options": [{"name": "discord"}, {"name": "gmail"}, {"name": "gcal"}, {"name": "notion"}, {"name": "webhook"}]}},
+    "ChannelName": {"rich_text": {}},
+    "ChannelId": {"rich_text": {}},
+    "Purpose": {"rich_text": {}},
+    "AllowWrite": {"checkbox": {}},
+    "AllowRead": {"checkbox": {}}
+  },
+  "Conversation Log": {
+    "Platform": {"select": {"options": [{"name": "discord"}, {"name": "cli"}, {"name": "webhook"}]}},
+    "ChannelId": {"rich_text": {}},
+    "MessageId": {"rich_text": {}},
+    "Role": {"select": {"options": [{"name": "user"}, {"name": "assistant"}, {"name": "system"}]}},
+    "Message": {"rich_text": {}},
+    "Sanitized": {"checkbox": {}}
+  },
+  "Action Log": {
+    "ActionType": {"select": {"options": [{"name": "read"}, {"name": "write"}, {"name": "send"}, {"name": "sync"}, {"name": "delete"}, {"name": "recommend"}]}},
+    "Target": {"rich_text": {}},
+    "Result": {"select": {"options": [{"name": "success"}, {"name": "skipped"}, {"name": "failed"}]}},
+    "Reason": {"rich_text": {}},
+    "TraceId": {"rich_text": {}}
+  },
+  "Diary": {
+    "Date": {"date": {}},
+    "Mood": {"select": {"options": [{"name": "good"}, {"name": "normal"}, {"name": "tired"}, {"name": "unknown"}]}},
+    "Summary": {"rich_text": {}},
+    "Highlights": {"rich_text": {}},
+    "NextActions": {"rich_text": {}}
+  }
+}

@@ -1,0 +1,7 @@
+# my-secretary-template sample cron
+0 8 * * * cd /opt/my-secretary-template && python3 scripts/lib/cron_gate.py daily_brief --min-interval 82800 || exit 0; python3 templates/onboarded/daily_brief.py
+*/5 * * * * cd /opt/my-secretary-template && python3 scripts/lib/cron_gate.py gcal_remind --min-interval 240 --allow-quiet || exit 0; python3 scripts/integrations/gcal/gcal_remind.py
+0 3 * * * cd /opt/my-secretary-template && python3 scripts/lib/cron_gate.py discord_log_sync --min-interval 82800 || exit 0; python3 scripts/integrations/discord/sync_log_to_notion.py
+0 8 * * * cd /opt/my-secretary-template && python3 scripts/lib/cron_gate.py sample_recommend --min-interval 82800 || exit 0; python3 scripts/recommendations/sample_scrape_recommend.py
+*/10 * * * * cd /opt/my-secretary-template && python3 templates/onboarded/health_ping.py >/tmp/my-secretary-health.log 2>&1
+15 9 * * 1-5 cd /opt/my-secretary-template && python3 templates/onboarded/task_digest.py

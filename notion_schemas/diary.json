@@ -1,0 +1,108 @@
+{
+  "title": "Diary",
+  "env": "NOTION_DB_DIARY",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "Date": {
+      "date": {}
+    },
+    "Mood": {
+      "select": {
+        "options": [
+          {
+            "name": "good"
+          },
+          {
+            "name": "normal"
+          },
+          {
+            "name": "tired"
+          },
+          {
+            "name": "unknown"
+          }
+        ]
+      }
+    },
+    "Summary": {
+      "rich_text": {}
+    },
+    "Highlights": {
+      "rich_text": {}
+    },
+    "NextActions": {
+      "rich_text": {}
+    }
+  }
+}

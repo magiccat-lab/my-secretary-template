@@ -22,6 +22,22 @@
 | 「タスクどう保存してる」「スマホからタスク見たい」「スプシと同期」 | `docs/tasks.md` | pending_tasks.json の構造と Google Sheets 双方向同期 |
 | 「Notion と繋ぎたい」「タスク Notion で見たい」「Wishlist 追加して」「Notion 同期失敗」 | `docs/notion.md` | Notion DB との同期・Wishlist 追加・トラブルシュート |
 
+## Phase 1 拡張 docs [初回セットアップ後の reference]
+
+`SETUP.md` の A-L 章で動かしたあと、 各機能を深掘りするときに参照する。
+
+| トピック | 読むファイル | 1行概要 |
+|---|---|---|
+| 「VPS まだ買ってない」「Xserver 契約から」 | `docs/setup/xserver-vps.md` | Xserver VPS 契約 + 初期 SSH 設定 |
+| 「ドメイン取りたい」「DNS どう書く」 | `docs/setup/domain.md` | ドメイン取得 + A レコード |
+| 「tunnel 使いたい」「外から呼びたい」 | `docs/setup/cloudflared.md` | Cloudflared install + service 化 |
+| 「Notion 連動したい」「integration 権限分からん」 | `docs/setup/notion.md` | Integration 作成 + Delete 権限剥奪 + DB 共有 |
+| 「Claude Code 動かない」「login できない」 | `docs/setup/claude-code.md` | install / login / Discord plugin |
+| 「bot 反応しない」「intents って何」 | `docs/setup/discord-bot.md` | Developer Portal + token + intents |
+| 「VPS で常駐させたい」「死んでも復活させて」 | `docs/setup/systemd.md` | systemd unit + watchdog |
+| 「公開前に個人情報チェック」 | `docs/setup/sanitize.md` | sanitize_lint + pre-commit |
+| 「動かない」「詰まった」「エラー出た」 | `docs/setup/troubleshooting.md` | Q&A 30+ [bun / cloudflared / Notion 403 / cron / systemd 等] |
+
 ## 既存ジョブ・これから追加するジョブ
 
 cronで動いている定期ジョブ一覧・追加の流れは `AGENT/JOBS.md` を参照。

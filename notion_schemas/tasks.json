@@ -1,0 +1,111 @@
+{
+  "title": "Tasks",
+  "env": "NOTION_DB_TASKS",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "DueAt": {
+      "date": {}
+    },
+    "Priority": {
+      "select": {
+        "options": [
+          {
+            "name": "low"
+          },
+          {
+            "name": "normal"
+          },
+          {
+            "name": "high"
+          },
+          {
+            "name": "urgent"
+          }
+        ]
+      }
+    },
+    "Tags": {
+      "multi_select": {}
+    },
+    "Detail": {
+      "rich_text": {}
+    },
+    "ReminderAt": {
+      "date": {}
+    },
+    "CompletedAt": {
+      "date": {}
+    }
+  }
+}

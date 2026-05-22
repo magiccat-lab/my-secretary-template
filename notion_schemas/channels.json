@@ -1,0 +1,114 @@
+{
+  "title": "Channel",
+  "env": "NOTION_DB_CHANNELS",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "Platform": {
+      "select": {
+        "options": [
+          {
+            "name": "discord"
+          },
+          {
+            "name": "gmail"
+          },
+          {
+            "name": "gcal"
+          },
+          {
+            "name": "notion"
+          },
+          {
+            "name": "webhook"
+          }
+        ]
+      }
+    },
+    "ChannelName": {
+      "rich_text": {}
+    },
+    "ChannelId": {
+      "rich_text": {}
+    },
+    "Purpose": {
+      "rich_text": {}
+    },
+    "AllowWrite": {
+      "checkbox": {}
+    },
+    "AllowRead": {
+      "checkbox": {}
+    }
+  }
+}

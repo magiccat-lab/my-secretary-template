@@ -64,6 +64,37 @@
 
 ---
 
+## Phase 1 拡張ジョブ [docs/setup/* + scripts/system/ 参照]
+
+### watchdog [死活監視 + 自動復帰]
+- スクリプト: `scripts/system/watchdog.py`
+- Cron: `*/5 * * * *` または systemd service [`scripts/system/my-secretary-watchdog.service.tpl`]
+- 動作: webhook_server / discord_bot_daemon の port / pgrep を check、 落ちてたら restart + Discord alert
+- 詳細: `docs/setup/systemd.md`
+
+### Discord conversation log → Notion + SQLite
+- スクリプト: `scripts/integrations/discord/corpus_writer.py` [realtime] + `sync_log_to_notion.py` [日次]
+- Cron: `0 3 * * *` [日次補填]
+- Env: `NOTION_TOKEN`, `NOTION_DB_CONVERSATION_LOG`
+- 動作: 全 message を sanitize_lint で個人情報マスク後、 Conversation Log DB に 1 row push + local SQLite に保管 [RAG fallback]
+
+### Channel 追加 [`+ch <id> <name>`]
+- スクリプト: `scripts/integrations/discord/channel_admin.py`
+- Cron: なし [Discord メッセ駆動]
+- 動作: webhook で `+ch` コマンドを受けて Channel DB に row 追加 + `data/channels.json` 自動更新
+
+### 重複なし scrape recommend
+- スクリプト: `scripts/recommendations/sample_scrape_recommend.py`
+- Cron: `0 8 * * *` [毎朝 8:00]
+- 動作: YouTube / Web から 3 件抽出、 重複防止 [local JSON or Notion Recommendations DB]、 random ch に push
+
+### Notion DB 自動作成 [初回 1 回のみ]
+- スクリプト: `scripts/integrations/notion/create_databases.py`
+- Cron: なし [手動 1 回]
+- 動作: NOTION_PARENT_PAGE_ID 親 page 配下に 8 DB 自動作成、 ID を `.env.generated.notion` に出力
+
+---
+
 ## サンプルジョブ（実装例・コピペして使う）
 
 新しいジョブを追加するときのパターン例。下のスクリプトは**未実装**なので、

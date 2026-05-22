@@ -1,0 +1,120 @@
+{
+  "title": "Conversation Log",
+  "env": "NOTION_DB_CONVERSATION_LOG",
+  "properties": {
+    "Title": {
+      "title": {}
+    },
+    "SourceKey": {
+      "rich_text": {}
+    },
+    "Status": {
+      "select": {
+        "options": [
+          {
+            "name": "new"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "done"
+          },
+          {
+            "name": "error"
+          },
+          {
+            "name": "archived"
+          }
+        ]
+      }
+    },
+    "Owner": {
+      "rich_text": {}
+    },
+    "CreatedAt": {
+      "date": {}
+    },
+    "UpdatedAt": {
+      "date": {}
+    },
+    "Source": {
+      "select": {
+        "options": [
+          {
+            "name": "local"
+          },
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cron"
+          },
+          {
+            "name": "script"
+          },
+          {
+            "name": "manual"
+          },
+          {
+            "name": "google"
+          },
+          {
+            "name": "notion"
+          }
+        ]
+      }
+    },
+    "ExternalId": {
+      "rich_text": {}
+    },
+    "ContentHash": {
+      "rich_text": {}
+    },
+    "Archived": {
+      "checkbox": {}
+    },
+    "Platform": {
+      "select": {
+        "options": [
+          {
+            "name": "discord"
+          },
+          {
+            "name": "cli"
+          },
+          {
+            "name": "webhook"
+          }
+        ]
+      }
+    },
+    "ChannelId": {
+      "rich_text": {}
+    },
+    "MessageId": {
+      "rich_text": {}
+    },
+    "Role": {
+      "select": {
+        "options": [
+          {
+            "name": "user"
+          },
+          {
+            "name": "assistant"
+          },
+          {
+            "name": "system"
+          }
+        ]
+      }
+    },
+    "Message": {
+      "rich_text": {}
+    },
+    "Sanitized": {
+      "checkbox": {}
+    }
+  }
+}

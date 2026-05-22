@@ -593,7 +593,7 @@ scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/gcal/cr
 
 ##### 方法 B: nano で貼り付ける [scp が動かない / 確実に楽な方法]
 
-VPS の ryu / myname シェルで:
+VPS の myname シェルで:
 
 ```bash
 mkdir -p ~/secretary/integrations/gcal/
@@ -1254,3 +1254,444 @@ tail -n 50 /tmp/health_check.log
 ---
 
 以上でセットアップは完了です。お疲れ様でした。
+
+L 章のトラブルシューティングは、初回 flow を止めないための最小限の確認だけを残しています。より細かい症状別の切り分けは [`docs/setup/troubleshooting.md`](docs/setup/troubleshooting.md) にまとめてあります。bun 未導入、Claude Code login、Discord intents、Cloudflared tunnel、Notion 403、cron / systemd、pip install、secret 混入防止などは、そちらを参照してください。
+
+## M. Phase 1 拡張機能
+
+この章は、初回起動後に personal assistant として使い始めるための拡張機能です。
+A-L 章で Discord から話しかけられるところまで進んだあとに実行します。
+
+### M-1. onboarding を実行する
+
+repo root に移動します。
+
+    cd ~/my-secretary-template
+
+venv を有効化します。
+
+    source .venv/bin/activate
+
+対話式で実行します。
+
+    python3 scripts/onboarding.py
+
+まず default で試す場合:
+
+    python3 scripts/onboarding.py --yes
+
+生成物を確認します。
+
+    find AGENT templates/generated -maxdepth 3 -type f
+
+代表的な生成物:
+
+- `AGENT/USER.md`
+- `templates/generated/anthropic_compatible_prompt.md`
+
+既存の `AGENT/USER.md` を上書きしたくない場合は、別 directory を指定します。
+
+    python3 scripts/onboarding.py --agent-dir AGENT_LOCAL
+
+### M-2. 生成された profile を確認する
+
+    sed -n '1,160p' AGENT/USER.md
+    sed -n '1,200p' templates/generated/anthropic_compatible_prompt.md
+
+確認する項目:
+- User display name
+- Assistant display name
+- Workspace name
+- Timezone
+- Wake / sleep time
+- Quiet hours
+- Work hours
+- Daily brief time
+- Calendar reminder
+- Default Discord channel
+- Notion / Google Calendar の使用有無
+
+公開 repository に出したくない情報は placeholder に置き換えます。
+
+### M-3. Notion DB 自動作成の考え方
+
+Phase 1 では、以下の 8 DB を使う想定です。
+
+- Tasks
+- Diary
+- Memory
+- Action Log
+- Conversation Log
+- Script Invocations
+- Cron Invocations
+- Channels
+
+schema は `notion_schemas/` にあります。
+
+    ls notion_schemas
+
+まとめて確認する場合:
+
+    ls notion_schemas/*.json
+
+自動作成 script がある場合は、必ず dry-run または test workspace で確認してから本番 workspace に向けます。
+Notion integration の capability は Read / Insert / Update のみを使い、Delete は外します。
+
+### M-4. Notion DB の共有
+
+DB を作っただけでは API から読めません。
+各 database を開き、Notion integration を connection として共有します。
+
+確認すること:
+- integration が正しい workspace にある
+- DB ごとに connection されている
+- database id を `.env` に入れている
+- page id と database id を混同していない
+
+詰まったら [`docs/setup/notion.md`](docs/setup/notion.md) を参照します。
+
+### M-5. cron_gate の使い方
+
+`cron_gate` は、同じ cron job が重複実行されることを防ぐための helper です。
+長い処理や API rate limit がある処理で使います。
+
+確認:
+
+    sed -n '1,200p' scripts/lib/cron_gate.py
+
+使いどころ:
+- daily brief
+- task digest
+- calendar reminder
+- external API sync
+- backup job
+
+設計の目安:
+- job name を固定する
+- lock timeout を決める
+- 失敗時に Discord alert を出す
+- 長時間 lock が残った時の復旧手順を docs に残す
+
+### M-6. watchdog の使い方
+
+watchdog は、webhook server や queue watcher の生存確認、必要に応じた通知を担当します。
+
+手動実行:
+
+    python3 scripts/system/watchdog.py
+
+systemd 経由:
+
+    systemctl --user status my-secretary-watchdog --no-pager
+    journalctl --user -u my-secretary-watchdog -n 100 --no-pager
+
+落ちた時に見るもの:
+- journal
+- `.env`
+- Discord alert channel
+- webhook health
+- Python traceback
+
+### M-7. sanitize の使い方
+
+公開前に sanitize を実行します。
+
+    python3 scripts/lib/sanitize_lint.py .
+
+Python compile も合わせて実行します。
+
+    python3 -m compileall scripts integrations templates
+
+pre-commit hook を入れる場合は [`docs/setup/sanitize.md`](docs/setup/sanitize.md) を参照します。
+
+### M-8. CI の確認
+
+GitHub Actions の workflow は `.github/workflows/ci.yml` にあります。
+
+    sed -n '1,220p' .github/workflows/ci.yml
+
+CI で確認したいもの:
+- Python compile
+- sanitize
+- unit test が増えた場合の pytest
+- secret が repository に混ざっていないこと
+
+CI が落ちたら、同じ command を local で実行してから直します。
+
+## N. カスタマイズ
+
+この章では、template を自分用に変えるときの触り方を説明します。
+最初は小さく変え、1 つ動いたら次を足します。
+
+### N-1. `AGENT/IDENTITY.md` を編集する
+
+assistant の基本的な自己紹介、口調、優先順位を書きます。
+
+    nano AGENT/IDENTITY.md
+
+書くとよいもの:
+- assistant name
+- 役割
+- 返答の長さ
+- 確認を挟む条件
+- secret を扱う時の注意
+- 利用者の生活 rhythm
+
+避けるもの:
+- 公開したくない個人情報
+- API key
+- token
+- private hostname
+- database id
+- channel id
+
+### N-2. `AGENT/AGENTS.md` を編集する
+
+行動規範や operational rule を書きます。
+
+例:
+- 予定変更は確認してから行う
+- secret は chat に再掲しない
+- 障害時は first check command を提示する
+- 外部 API を使う前に目的を明確にする
+- 削除操作は必ず確認する
+
+### N-3. sample script を追加する
+
+`templates/onboarded/` を参考に、1 file ずつ追加します。
+
+例:
+
+    cp templates/onboarded/health_ping.py templates/onboarded/my_daily_check.py
+    nano templates/onboarded/my_daily_check.py
+
+追加後:
+
+    python3 -m compileall templates/onboarded
+    python3 templates/onboarded/my_daily_check.py
+
+いきなり cron に入れず、手動実行で成功してから登録します。
+
+### N-4. Discord 通知を足す
+
+通知先 channel を `.env` に追加します。
+
+    DISCORD_ALERT_CHANNEL_ID=000000000000000000
+
+送信 helper がある場合はそれを使います。
+
+    python3 scripts/discord_send.py --help
+
+まず test message を送ってから、本処理に組み込みます。
+
+### N-5. Channel DB を使う
+
+Channels DB は、Discord channel の用途を Notion 側で管理したい時に使います。
+
+持たせる情報例:
+- channel name
+- channel id
+- purpose
+- notify level
+- enabled
+- last checked time
+
+用途:
+- command channel と alert channel の分離
+- script ごとの通知先管理
+- 一時停止したい channel の制御
+- 運用 log の整理
+
+### N-6. 自分用 cron を追加する
+
+cron は最初から増やしすぎないようにします。
+
+確認:
+
+    crontab -l
+
+編集:
+
+    crontab -e
+
+例:
+
+    0 8 * * * cd /home/app/my-secretary-template && /home/app/my-secretary-template/.venv/bin/python templates/onboarded/daily_brief.py >> /tmp/daily_brief.log 2>&1
+
+注意:
+- path は絶対 path
+- venv の Python を使う
+- log を残す
+- `.env` を script 側で読む
+- 重複実行が困る job は cron_gate を使う
+
+### N-7. quiet hours を守る
+
+通知 script は quiet hours を見て、深夜通知を避ける設計にします。
+緊急 alert と日次通知は扱いを分けます。
+
+例:
+- health failure: alert channel に送る
+- daily brief: 起床後に送る
+- task digest: 作業開始前に送る
+- backup success: log channel のみに送る
+
+### N-8. 変更後 checklist
+
+変更したら毎回確認します。
+
+    python3 scripts/lib/sanitize_lint.py .
+    python3 -m compileall scripts integrations templates
+    git status --short
+
+systemd 対象を変えた場合:
+
+    systemctl --user restart my-secretary-watchdog
+    journalctl --user -u my-secretary-watchdog -n 80 --no-pager
+
+## O. 運用
+
+この章は、動き始めた後の日常運用です。
+一度動いたら終わりではなく、backup、health check、alert、復旧手順を薄く整えます。
+
+### O-1. 日次 backup
+
+まず対象を決めます。
+
+backup 対象:
+- `AGENT/`
+- `data/`
+- `templates/generated/`
+- Notion export が必要なら別途
+- `.env` は暗号化なしで共有しない
+
+local backup 例:
+
+    mkdir -p ~/backups/my-secretary
+    tar czf ~/backups/my-secretary/backup-$(date +%F).tar.gz AGENT data templates/generated
+
+世代管理:
+- 7 日分だけ残す
+- 重要変更前に手動 backup
+- secret file は扱いを分ける
+
+### O-2. health check
+
+local:
+
+    curl -s http://localhost:8781/health
+
+systemd:
+
+    systemctl --user status my-secretary-watchdog --no-pager
+
+journal:
+
+    journalctl --user -u my-secretary-watchdog -n 50 --no-pager
+
+外部 URL:
+
+    curl -s https://assistant.example.com/health
+
+health endpoint が通っても、Notion や Discord の API が通るとは限りません。
+必要に応じて end-to-end check を追加します。
+
+### O-3. Discord alert
+
+alert channel には、すぐ対応したいものだけ流します。
+
+alert 対象:
+- watchdog failure
+- webhook server down
+- Notion 401 / 403
+- Discord token error
+- backup failure
+- cron job repeated failure
+- disk usage high
+
+log channel に流すもの:
+- backup success
+- daily job summary
+- sync count
+- non-critical warning
+
+### O-4. 落ちた時の systemd 復旧
+
+まず status を見ます。
+
+    systemctl --user status my-secretary-watchdog --no-pager
+
+log を見ます。
+
+    journalctl --user -u my-secretary-watchdog -n 120 --no-pager
+
+再起動します。
+
+    systemctl --user restart my-secretary-watchdog
+
+それでも落ちる場合は ExecStart を手動で実行します。
+
+    cd ~/my-secretary-template
+    source .venv/bin/activate
+    python3 scripts/system/watchdog.py
+
+### O-5. disk usage
+
+小さい VPS では log と cache が溜まります。
+
+    df -h
+    du -sh ~/my-secretary-template
+    journalctl --disk-usage
+
+journal を掃除する場合:
+
+    journalctl --vacuum-time=14d
+
+### O-6. dependency update
+
+定期的にまとめて更新します。
+障害対応中に package update を混ぜないでください。
+
+    source .venv/bin/activate
+    pip list --outdated
+
+更新後:
+
+    pip install -r requirements.txt
+    python3 -m compileall scripts integrations templates
+    systemctl --user restart my-secretary-watchdog
+
+### O-7. token rotation
+
+token を変えたら以下を確認します。
+
+- `.env` を更新
+- permission は `chmod 600`
+- systemd を restart
+- test message / test API を実行
+- 古い token を revoke
+
+### O-8. 月次点検
+
+月 1 回の確認:
+- backup が復元可能か
+- CI が通っているか
+- Notion integration の共有先
+- Discord bot の権限
+- Cloudflared tunnel の status
+- VPS の disk / memory
+- `.env.template` と docs が古くないか
+
+### O-9. 相談用 bundle
+
+誰かに相談する時は、secret を伏字にした上で以下を集めます。
+
+    date
+    git status --short
+    python3 --version
+    systemctl --user status my-secretary-watchdog --no-pager
+    journalctl --user -u my-secretary-watchdog -n 80 --no-pager
+    curl -s http://localhost:8781/health || true
+
+token、database id、channel id、server IP、private hostname は必ず伏字にします。
+詳細な症状別の切り分けは [`docs/setup/troubleshooting.md`](docs/setup/troubleshooting.md) を参照してください。
