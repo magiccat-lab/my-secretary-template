@@ -1,220 +1,203 @@
 #!/usr/bin/env python3
-"""Gmail の新着メール監視。
-
-毎分 cron で起動。未読メッセージを取得して分類し（自動返信 / サイレント
-アーカイブ / 通常）、通常メールだけ webhook で通知する。
-
-環境変数:
-    GMAIL_TOKEN        Gmail OAuth token.json のパス（デフォルト: integrations/gmail/token.json）
-    STATE_DIR          ステート保存ディレクトリ（デフォルト: ~/secretary/data）
-    WEBHOOK_URL        通知先エンドポイント（デフォルト: http://localhost:8781/gmail_notify）
-    CONCIERGE_DOMAIN   オプション: このドメインからのメールを "concierge" として扱う
-
-cron の例:
-    * * * * * /usr/bin/python3 ~/secretary/integrations/gmail/gmail_monitor.py \\
-        >> /tmp/gmail_monitor.log 2>&1
-"""
-
 from __future__ import annotations
 
 import base64
+import json
 import os
 import sys
 from email import message_from_bytes
 from email.header import decode_header
+from pathlib import Path
 
 import requests
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
-# `from scripts.lib.state_store import ...` を動かすためリポジトリルートを sys.path に追加。
-# __file__ -> integrations/gmail/gmail_monitor.py なので dirname を3回でルートに到達。
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
-
-from google.auth.transport.requests import Request  # noqa: E402
-from google.oauth2.credentials import Credentials  # noqa: E402
-from googleapiclient.discovery import build  # noqa: E402
-
-from scripts.lib.state_store import load_state, save_state  # noqa: E402
-
-TOKEN = os.getenv(
-    "GMAIL_TOKEN",
-    os.path.join(_REPO_ROOT, "integrations", "gmail", "token.json"),
-)
-STATE_FILE = os.path.join(
-    os.getenv("STATE_DIR", os.path.expanduser("~/secretary/data")),
-    "gmail_monitor_state.json",
-)
-WEBHOOK = os.getenv("WEBHOOK_URL", "http://localhost:8781/gmail_notify")
-CONCIERGE_DOMAIN = os.getenv("CONCIERGE_DOMAIN", "")
-
-SCOPES = [
-    "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/gmail.modify",
-]
-
-SILENT_ARCHIVE_SENDERS = [
-    "docs.google.com",
-    "drive-shares-noreply@google.com",
-]
-
-AUTO_REPLY_KEYWORDS = [
-    "auto reply",
-    "auto-reply",
-    "automatic reply",
-    "out of office",
-    "this is an auto",
-    "automailer",
-    "noreply",
-    "no-reply",
-]
-AUTO_REPLY_SUBJECTS = [
-    "auto reply",
-    "automatic reply",
-    "out of office",
-]
+ROOT = Path(__file__).resolve().parents[2]
+TOKEN_PATH = Path(os.environ.get("GOOGLE_TOKEN_PATH", ROOT / "integrations" / "gcal" / "token.json"))
+GMAIL_TOKEN_PATH = Path(os.environ.get("GMAIL_TOKEN", ROOT / "integrations" / "gmail" / "token.json"))
+RULES_PATH = Path(os.environ.get("GMAIL_RULES_PATH", ROOT / "integrations" / "gmail" / "filter_rules.yaml"))
+STATE_PATH = Path(os.environ.get("GMAIL_STATE_PATH", ROOT / "data" / "gmail_monitor_state.json"))
+QUERY = os.environ.get("GMAIL_QUERY", "is:unread newer_than:7d")
+MAX_RESULTS = int(os.environ.get("GMAIL_MAX_RESULTS", "10"))
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 
-def decode_str(s: str) -> str:
-    parts = decode_header(s)
-    result = ""
-    for part, enc in parts:
+def env_bool(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def decode_value(value: str) -> str:
+    out = ""
+    for part, enc in decode_header(value or ""):
         if isinstance(part, bytes):
-            result += part.decode(enc or "utf-8", errors="replace")
+            out += part.decode(enc or "utf-8", errors="replace")
         else:
-            result += part
-    return result
+            out += part
+    return out
 
 
-def get_body(msg) -> str:
-    if msg.is_multipart():
-        for part in msg.walk():
-            if part.get_content_type() == "text/plain":
-                payload = part.get_payload(decode=True)
-                charset = part.get_content_charset() or "utf-8"
-                return payload.decode(charset, errors="replace")
-    else:
-        payload = msg.get_payload(decode=True)
-        if payload:
-            charset = msg.get_content_charset() or "utf-8"
-            return payload.decode(charset, errors="replace")
-    return ""
+def load_state() -> dict:
+    if not STATE_PATH.exists():
+        return {"seen_ids": []}
+    try:
+        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"seen_ids": []}
 
 
-def is_auto_reply(msg, body: str) -> bool:
-    auto_submitted = msg.get("Auto-Submitted", "")
-    if auto_submitted and auto_submitted != "no":
-        return True
-    subject = decode_str(msg.get("Subject", "")).lower()
-    if any(kw in subject for kw in AUTO_REPLY_SUBJECTS):
-        return True
-    body_lower = body.lower()
-    return any(kw in body_lower for kw in AUTO_REPLY_KEYWORDS)
+def save_state(state: dict) -> None:
+    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def _load_state() -> dict:
-    return load_state(STATE_FILE, default={"seen_ids": []})
-
-
-def _save_state(state: dict) -> None:
-    save_state(STATE_FILE, state)
-
-
-def mark_read(service, mid: str) -> None:
-    service.users().messages().modify(
-        userId="me", id=mid, body={"removeLabelIds": ["UNREAD"]}
-    ).execute()
-
-
-def archive(service, mid: str) -> None:
-    service.users().messages().modify(
-        userId="me", id=mid, body={"removeLabelIds": ["UNREAD", "INBOX"]}
-    ).execute()
-
-
-def main() -> None:
-    import time
-
-    service = None
-    for attempt in range(3):
-        try:
-            creds = Credentials.from_authorized_user_file(TOKEN, SCOPES)
-            if creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                with open(TOKEN, "w") as f:
-                    f.write(creds.to_json())
-            service = build("gmail", "v1", credentials=creds)
-            service.users().getProfile(userId="me").execute()
-            break
-        except Exception as e:
-            if attempt < 2:
-                wait = 5 * (2**attempt)
-                print(f"接続失敗 (試行 {attempt + 1}/3): {e} -> {wait}秒後にリトライ")
-                time.sleep(wait)
-            else:
-                print(f"接続失敗 3回: {e} -> スキップ")
-                return
-
-    state = _load_state()
-    seen_ids = set(state.get("seen_ids", []))
-    first_run = len(seen_ids) == 0
-
-    result = (
-        service.users().messages().list(userId="me", q="is:unread", maxResults=20).execute()
-    )
-    messages = result.get("messages", [])
-
-    new_seen = set()
-    notifications = []
-
-    for m in messages:
-        mid = m["id"]
-        new_seen.add(mid)
-        if mid in seen_ids:
+def simple_yaml(path: Path) -> dict:
+    data: dict[str, dict[str, list[str] | bool]] = {"notify": {}, "exclude": {}}
+    section = ""
+    key = ""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
             continue
+        if not line.startswith(" ") and stripped.endswith(":"):
+            section = stripped[:-1]
+            data.setdefault(section, {})
+            key = ""
+        elif section and line.startswith("  ") and stripped.endswith(":"):
+            key = stripped[:-1]
+            data[section][key] = []
+        elif section and key and stripped.startswith("- "):
+            value = stripped[2:].strip().strip('"').strip("'")
+            target = data[section].setdefault(key, [])
+            if isinstance(target, list):
+                target.append(value)
+        elif ":" in stripped:
+            left, right = stripped.split(":", 1)
+            data[left.strip()] = right.strip().lower() == "true"  # type: ignore[assignment]
+    return data
 
+
+def load_rules() -> dict:
+    if not RULES_PATH.exists():
+        return {"notify": {"senders": [], "keywords": [], "labels": []}, "exclude": {"senders": [], "keywords": []}, "mark_read_after_notify": True}
+    try:
+        import yaml  # type: ignore
+
+        return yaml.safe_load(RULES_PATH.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return simple_yaml(RULES_PATH)
+
+
+def gmail_service():
+    primary_path = TOKEN_PATH if TOKEN_PATH.is_absolute() else ROOT / TOKEN_PATH
+    fallback_path = GMAIL_TOKEN_PATH if GMAIL_TOKEN_PATH.is_absolute() else ROOT / GMAIL_TOKEN_PATH
+    credentials_path = primary_path if primary_path.exists() else fallback_path
+    creds = Credentials.from_authorized_user_file(str(credentials_path), SCOPES)
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+        credentials_path.write_text(creds.to_json(), encoding="utf-8")
+    return build("gmail", "v1", credentials=creds)
+
+
+def message_text(payload: dict) -> str:
+    raw = payload.get("raw", "")
+    if not raw:
+        return ""
+    msg = message_from_bytes(base64.urlsafe_b64decode(raw.encode("utf-8")))
+    return "\n".join(
+        [
+            decode_value(msg.get("From", "")),
+            decode_value(msg.get("Subject", "")),
+            payload.get("snippet", ""),
+        ]
+    )
+
+
+def matches(values: list[str], text: str) -> bool:
+    low = text.lower()
+    return any(value.lower() in low for value in values if value)
+
+
+def should_notify(item: dict, rules: dict) -> bool:
+    text = item["text"]
+    labels = " ".join(item.get("labelIds", []))
+    exclude = rules.get("exclude", {})
+    if matches(exclude.get("senders", []), item["from"]) or matches(exclude.get("keywords", []), text):
+        return False
+    notify = rules.get("notify", {})
+    senders = notify.get("senders", [])
+    keywords = notify.get("keywords", [])
+    rule_labels = notify.get("labels", [])
+    if not senders and not keywords and not rule_labels:
+        return True
+    return matches(senders, item["from"]) or matches(keywords, text) or matches(rule_labels, labels)
+
+
+def post_discord(text: str) -> None:
+    discord_webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
+    if discord_webhook:
+        requests.post(discord_webhook, json={"content": text}, timeout=10)
+        return
+    local_webhook = os.environ.get("WEBHOOK_URL", "http://localhost:8781/gmail_notify")
+    if local_webhook:
+        requests.post(local_webhook, json={"message": text}, timeout=10)
+        return
+    channel_id = os.environ.get("DISCORD_CHANNEL_RANDOM", "")
+    if not channel_id:
+        print("No Discord destination configured", file=sys.stderr)
+        return
+    sys.path.insert(0, str(ROOT))
+    from scripts.lib.discord_post import post
+
+    result = post(channel_id=channel_id, text=text)
+    if not result.get("ok"):
+        print(result.get("error"), file=sys.stderr)
+
+
+def main() -> int:
+    if not env_bool("FEATURE_GMAIL"):
+        print("FEATURE_GMAIL is not true; skipping")
+        return 0
+    rules = load_rules()
+    state = load_state()
+    seen = set(state.get("seen_ids", []))
+    service = gmail_service()
+    response = service.users().messages().list(userId="me", q=QUERY, maxResults=MAX_RESULTS).execute()
+    messages = response.get("messages", [])
+    if not STATE_PATH.exists():
+        state["seen_ids"] = [row["id"] for row in messages][-500:]
+        save_state(state)
+        print(f"initialized seen_ids={len(state['seen_ids'])}")
+        return 0
+    new_seen = set()
+    for row in messages:
+        mid = row["id"]
+        if mid in seen:
+            continue
         detail = service.users().messages().get(userId="me", id=mid, format="raw").execute()
-        raw = base64.urlsafe_b64decode(detail["raw"])
-        msg = message_from_bytes(raw)
-
-        sender = decode_str(msg.get("From", ""))
-        subject = decode_str(msg.get("Subject", "(件名なし)"))
-        body = get_body(msg).strip()[:1000]
-        auto = is_auto_reply(msg, body)
-
-        is_concierge = bool(CONCIERGE_DOMAIN) and CONCIERGE_DOMAIN in sender
-        is_silent_archive = any(s in sender for s in SILENT_ARCHIVE_SENDERS)
-
-        notifications.append(
-            {
-                "sender": sender,
-                "subject": subject,
-                "body": body,
-                "is_concierge": is_concierge,
-                "is_auto_reply": auto,
-                "is_silent_archive": is_silent_archive,
-                "mid": mid,
-            }
-        )
-
-    if not first_run:
-        for n in notifications:
-            try:
-                if n["is_silent_archive"]:
-                    archive(service, n["mid"])
-                    continue
-                requests.post(WEBHOOK, json=n, timeout=10)
-                mark_read(service, n["mid"])
-                if n["is_auto_reply"]:
-                    archive(service, n["mid"])
-            except Exception as e:
-                print(f"通知失敗（次回リトライします）: {e}")
-                new_seen.discard(n["mid"])
-
-    state["seen_ids"] = list(seen_ids | new_seen)[-200:]
-    _save_state(state)
-    print(f"完了: 新着 {len(notifications)} 件")
+        msg = message_from_bytes(base64.urlsafe_b64decode(detail["raw"].encode("utf-8")))
+        item = {
+            "id": mid,
+            "from": decode_value(msg.get("From", "")),
+            "subject": decode_value(msg.get("Subject", "")),
+            "snippet": detail.get("snippet", ""),
+            "labelIds": detail.get("labelIds", []),
+            "text": message_text(detail),
+        }
+        new_seen.add(mid)
+        if not should_notify(item, rules):
+            continue
+        text = f"Email matched rule\nFrom: {item['from'][:160]}\nSubject: {item['subject'][:160]}\nSnippet: {item['snippet'][:500]}"
+        post_discord(text)
+        if rules.get("mark_read_after_notify", True):
+            service.users().messages().modify(userId="me", id=mid, body={"removeLabelIds": ["UNREAD"]}).execute()
+    state["seen_ids"] = list((seen | new_seen))[-500:]
+    save_state(state)
+    print(f"checked={len(messages)} new={len(new_seen)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

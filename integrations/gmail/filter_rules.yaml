@@ -1,0 +1,14 @@
+notify:
+  senders: []
+  keywords:
+    - urgent
+    - action required
+  labels: []
+exclude:
+  senders:
+    - no-reply
+    - noreply
+  keywords:
+    - automatic reply
+    - out of office
+mark_read_after_notify: true
