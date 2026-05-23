@@ -98,3 +98,23 @@ default 値で試す場合:
 
 CI が落ちた場合は、先に local で同じ command を実行します。
 secret、database id、channel id、private hostname は repository に入れないでください。
+
+## Phase 2 拡張
+
+Phase 2 では秘書を「育てる・記録する・学習させる」フェーズの機能を追加しています。
+すべてオプションで、`.env` の `FEATURE_*=true` フラグで個別に有効化します。
+
+### 追加された主な機能
+
+- **handoff** — 毎晩の引き継ぎ自動生成。`scripts/system/nightly_handoff.py` が `data/claude/handoff.md` を書き出し、次のセッションが前日の文脈を即座に把握できます。
+- **chat search** — Discord 会話ログを SQLite に蓄積し、自然言語で横断検索できます。`data/discord_corpus.sqlite3` がローカル全文検索のバックエンドです。
+- **gmail** — Gmail をポーリングしてフィルタルールに沿った通知・自動返信を行います。`integrations/gmail/filter_rules.yaml` でルールを定義します。
+- **diary** — 毎晩 21:30 に「今日どうだった？」をDiscordで問いかけ、回答を `data/notes/` に蓄積します。
+- **trainer** — 会話ログと TIL から persona の成長提案・知識ファイル更新を自動化します。
+
+### 有効化の流れ
+
+1. `.env` の `FEATURE_*` フラグを `true` に変更
+2. `python3 scripts/onboarding.py` を再実行（5つの追加質問が表示されます）
+3. `python3 scripts/system/install_cron.py add` で cron を再インストール
+4. 各機能の詳細は `docs/setup/` 配下を参照してください

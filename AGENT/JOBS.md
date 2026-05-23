@@ -22,10 +22,11 @@
 - Cron: `*/5 * * * *`
 - webhook / screen / claude のどれかが落ちていたら再起動。
 
-### デイリー handoff
+### デイリー handoff [Phase 1]
 - スクリプト: `scripts/daily_handoff.py`
 - Cron: `0 3 * * *`（または停止前に手動実行）
 - `data/handoff.md` を書いて、次のセッションが引き継げるようにする。
+- > **Phase 2 以降は** `scripts/system/nightly_handoff.py` + `data/claude/handoff.md` を使います（`FEATURE_HANDOFF=true` で有効化）。
 
 ### 週次再起動（オプション）
 - スクリプト: `scripts/weekly_restart.sh`
@@ -155,3 +156,52 @@
 2. **先にここに書く**: 秘書はこのファイルをジョブ仕様として読む。
 3. **自分で書く**: `scripts/` にスクリプトを作って、`crontab -e` に
    エントリを追加し、上のテーブルに1行足す。
+
+---
+
+## Phase 2 拡張ジョブ [FEATURE_* フラグで有効化]
+
+Phase 2 の各機能を有効化すると、以下のジョブが cron / オンデマンドで追加されます。
+`python3 scripts/system/install_cron.py add` で自動登録されます。詳細は `docs/setup/` 参照。
+
+### nightly_handoff [毎晩の引き継ぎ生成]
+- スクリプト: `scripts/system/nightly_handoff.py`
+- Cron: `30 3 * * *`（デフォルト。`HANDOFF_TIME` で変更可）
+- Env: `FEATURE_HANDOFF=true`
+- 動作: Discord 履歴 + pending_tasks / agent_backlog を集約して `data/claude/handoff.md` を上書き。次セッションが即座に文脈を把握できるようにする
+
+### gmail_monitor [Gmail モニタリング]
+- スクリプト: `integrations/gmail/gmail_monitor.py`
+- Cron: `* * * * *`（毎分）
+- Env: `FEATURE_GMAIL=true`（または後方互換 `GMAIL_ENABLED=true`）
+- 動作: 未読メールをポーリングして `integrations/gmail/filter_rules.yaml` のルールに従い Discord 通知 + 任意自動返信
+
+### daily_prompt + diary_writer [日記プロンプト]
+- スクリプト: `scripts/system/diary_prompt.py`
+- Cron: `30 21 * * *`（デフォルト。`DIARY_PROMPT_TIME` で変更可）
+- Env: `FEATURE_DIARY=true`
+- 動作: 毎晩 Discord にプロンプトを投下、返答を `data/notes/YYYY-MM-DD-diary.md` に保存
+
+### memory_extractor [会話から記憶抽出]
+- スクリプト: `scripts/system/memory_extractor.py`
+- Cron: `0 2 * * *`（深夜 2:00）
+- Env: `FEATURE_TRAINER=true`
+- 動作: 直近の Discord ログから重要な事実・好み・パターンを抽出し `data/notes/knowledge.md` に追記
+
+### persona_evolution [persona 自動更新提案]
+- スクリプト: `scripts/system/persona_evolution.py`
+- Cron: `0 4 * * 0`（日曜 4:00）
+- Env: `FEATURE_TRAINER=true`
+- 動作: `TRAINER_LOOKBACK_DAYS` 日分の会話を分析して `data/notes/persona_suggestions.md` に提案を書き出す。レビュー後に `AGENT/IDENTITY.md` へ反映するかは手動判断
+
+### til_promoter [TIL 昇格]
+- スクリプト: `scripts/system/til_promoter.py`
+- Cron: `0 1 * * *`（深夜 1:00）
+- Env: `FEATURE_TRAINER=true`
+- 動作: 会話中に出現した学習内容を `data/notes/til_*.md` として保存。`TRAINER_MIN_CONFIDENCE` 以上の confidence で自動昇格
+
+### chat_search [オンデマンド]
+- スクリプト: `scripts/integrations/discord/corpus_writer.py`（収集） + 検索は会話駆動
+- Cron: `0 3 * * *`（corpus 補填。収集は realtime）
+- Env: `FEATURE_CHATSEARCH=true`
+- 動作: 全 Discord message を SQLite（`DISCORD_CORPUS_DB`）に蓄積。「〇〇について前に話した内容を探して」で自然言語検索を実行する

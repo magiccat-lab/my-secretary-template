@@ -37,6 +37,18 @@
 | 「VPS で常駐させたい」「死んでも復活させて」 | `docs/setup/systemd.md` | systemd unit + watchdog |
 | 「公開前に個人情報チェック」 | `docs/setup/sanitize.md` | sanitize_lint + pre-commit |
 | 「動かない」「詰まった」「エラー出た」 | `docs/setup/troubleshooting.md` | Q&A 30+ [bun / cloudflared / Notion 403 / cron / systemd 等] |
+## Phase 2 拡張 docs [Phase 2 機能の reference]
+
+`SETUP.md` の P 章で各 `FEATURE_*=true` を立てたあと、機能の詳細を確認するときに参照する。
+
+| トピック | 読むファイル | 1行概要 |
+|---|---|---|
+| 「引き継ぎ自動生成したい」「handoff がうまくいかない」「毎晩何時に走るの」 | `docs/setup/handoff.md` | nightly_handoff の設定・出力フォーマット・時刻変更 |
+| 「過去の会話を検索したい」「チャット履歴に聞きたい」「chat search の仕組み」 | `docs/setup/chat_search.md` | Discord corpus SQLite 構築・検索コマンド |
+| 「Gmail 監視したい」「メール通知が来ない」「フィルタルール書きたい」 | `docs/setup/gmail.md` | Gmail monitor のルール定義・FEATURE_GMAIL の設定 |
+| 「日記を付けたい」「毎晩 diary プロンプトを送って」「日記が溜まってる場所は」 | `docs/setup/diary.md` | diary prompt の時刻・保存先・フォーマット |
+| 「persona を育てたい」「TIL を昇格させて」「trainer の動作を確認したい」 | `docs/setup/trainer.md` | memory_extractor / persona_evolution / til_promoter の設定 |
+
 
 ## 既存ジョブ・これから追加するジョブ
 

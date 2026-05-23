@@ -748,24 +748,17 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 - `WEBHOOK_TOKEN`（16進文字列）
 
 トークン類を外部に送りたくないので、これは VPS のターミナルだけで完結させます。
-下のコマンドの **`paste_*_here` の3箇所だけ書き換えて**、まるごとコピペして実行
-してください。
+`.env.template` の内容を確認しながら、以下の手順で `.env` を作成してください。
 
 ```bash
-cat <<'EOF' > ~/secretary/.env
-DISCORD_USER_ID=paste_user_id_here
-DISCORD_CHANNEL_RANDOM=paste_channel_id_here
-WEBHOOK_PORT=8781
-WEBHOOK_TOKEN=paste_webhook_token_here
-GOOGLE_TOKEN_PATH=integrations/gcal/token.json
-GCAL_CALENDAR_ID=primary
-TASK_SHEET_ID=
-GMAIL_ENABLED=false
-GCAL_REMIND_ENABLED=false
-BRAVE_API_KEY=
-EOF
-chmod 600 ~/secretary/.env
+cd ~/secretary
+cp .env.template .env
+chmod 600 .env
+nano .env
 ```
+
+`nano` で開いたら、`# TODO` とコメントされている3箇所（`DISCORD_USER_ID` / `DISCORD_CHANNEL_RANDOM` / `WEBHOOK_TOKEN`）に値を貼り付けて保存します（Ctrl+O → Enter → Ctrl+X）。
+`.env.template` の変数一覧がそのまま引き継がれるので、他の値は後で秘書に頼んで追加できます。
 
 実行したら完了です。
 
@@ -1695,3 +1688,71 @@ token を変えたら以下を確認します。
 
 token、database id、channel id、server IP、private hostname は必ず伏字にします。
 詳細な症状別の切り分けは [`docs/setup/troubleshooting.md`](docs/setup/troubleshooting.md) を参照してください。
+
+---
+
+## P. Phase 2 オプション機能の有効化
+
+Phase 1（A-O 章）で秘書が動き始めたあと、以下の手順で Phase 2 の拡張機能を有効化できます。
+すべてオプションです。使う機能だけ有効化してください。
+
+### P-1. `.env` に `FEATURE_*` フラグを立てる
+
+`~/secretary/.env` を開き、有効化したい機能の値を `false` から `true` に変更してください。
+
+```
+# 例: handoff と diary を有効化
+FEATURE_HANDOFF=true
+FEATURE_DIARY=true
+```
+
+利用可能なフラグ:
+
+| フラグ | 機能 | 詳細 |
+|---|---|---|
+| `FEATURE_HANDOFF=true` | 毎晩の引き継ぎ自動生成 | `docs/setup/handoff.md` |
+| `FEATURE_CHATSEARCH=true` | Discord 会話の横断検索 | `docs/setup/chat_search.md` |
+| `FEATURE_GMAIL=true` | Gmail モニター + 自動通知 | `docs/setup/gmail.md` |
+| `FEATURE_DIARY=true` | 毎晩の日記プロンプト | `docs/setup/diary.md` |
+| `FEATURE_TRAINER=true` | persona 進化 + TIL 昇格 | `docs/setup/trainer.md` |
+
+> **互換性メモ**: Phase 1 で `GMAIL_ENABLED=true` を使っていた場合も引き続き動作します。
+> Phase 2 では `FEATURE_GMAIL=true` が正式フラグです。両方 `true` のとき Gmail monitor は 1 回だけ起動します。
+
+### P-2. onboarding を再実行する（新機能の初期 profile を生成）
+
+```bash
+cd ~/secretary
+python3 scripts/onboarding.py
+```
+
+Phase 2 機能を有効化した状態で実行すると、以下の 5 つの追加質問が表示されます:
+
+1. handoff — 毎晩何時に引き継ぎを書くか（例: `03:30`）
+2. chat search — 検索で返す最大件数
+3. Gmail — 監視するクエリ（例: `is:unread newer_than:7d`）
+4. diary — 日記プロンプトを送る時刻（例: `21:30`）
+5. trainer — TIL として昇格する最小 confidence（例: `0.60`）
+
+`--yes` を付けると `.env.template` のデフォルト値で自動回答します。
+
+### P-3. cron を再インストールする
+
+```bash
+cd ~/secretary
+python3 scripts/system/install_cron.py add
+```
+
+有効化した機能の cron エントリが自動追加されます。現在の crontab を確認するには:
+
+```bash
+crontab -l
+```
+
+### P-4. 各機能の詳細ドキュメント
+
+- [`docs/setup/handoff.md`](docs/setup/handoff.md) — 引き継ぎ生成の仕組みと時刻設定
+- [`docs/setup/chat_search.md`](docs/setup/chat_search.md) — SQLite corpus の構築と検索の使い方
+- [`docs/setup/gmail.md`](docs/setup/gmail.md) — Gmail フィルタルールの書き方
+- [`docs/setup/diary.md`](docs/setup/diary.md) — 日記プロンプトのカスタマイズ
+- [`docs/setup/trainer.md`](docs/setup/trainer.md) — persona 進化・TIL 昇格の動作原理
