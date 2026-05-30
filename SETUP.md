@@ -1259,7 +1259,7 @@ A-L 章で Discord から話しかけられるところまで進んだあとに�
 
 repo root に移動します。
 
-    cd ~/my-secretary-template
+    cd ~/secretary
 
 venv を有効化します。
 
@@ -1624,7 +1624,7 @@ log を見ます。
 
 それでも落ちる場合は ExecStart を手動で実行します。
 
-    cd ~/my-secretary-template
+    cd ~/secretary
     source .venv/bin/activate
     python3 scripts/system/watchdog.py
 
@@ -1633,7 +1633,7 @@ log を見ます。
 小さい VPS では log と cache が溜まります。
 
     df -h
-    du -sh ~/my-secretary-template
+    du -sh ~/secretary
     journalctl --disk-usage
 
 journal を掃除する場合:
