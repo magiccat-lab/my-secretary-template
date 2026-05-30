@@ -406,15 +406,23 @@ Claude のアカウントで認証してください（VPS 上にブラウザは
 ```bash
 git clone https://github.com/magiccat-lab/my-secretary-template.git ~/secretary
 cd ~/secretary
-pip install -r requirements.txt
+
+# 仮想環境 [venv] を作る。Ubuntu は python3-venv が要る場合あり
+sudo apt install -y python3-venv
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Ubuntu 24.04 以降だと `pip install` が `externally-managed-environment`
-というエラーで弾かれることがあります。その場合は以下を使ってください。
+このプロジェクトの Python は以降ずっと `.venv` 内で動かします。Ubuntu 24.04 以降の
+`externally-managed-environment` エラーも venv なら起きません [`--break-system-packages`
+のような応急処置は不要]。
 
-```bash
-pip install --break-system-packages -r requirements.txt
-```
+新しいシェルで作業を再開するときは `cd ~/secretary && source .venv/bin/activate` で
+有効化してください。cron からは activate せず絶対パス `~/secretary/.venv/bin/python`
+で呼びます [後述の M 章 / cron 設定参照]。
 
 `~/secretary/` の下に設定ファイルやスクリプトが並んでいれば OK です。
 
