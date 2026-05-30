@@ -1517,7 +1517,7 @@ cron は最初から増やしすぎないようにします。
 
 例:
 
-    0 8 * * * cd /home/app/my-secretary-template && /home/app/my-secretary-template/.venv/bin/python templates/onboarded/daily_brief.py >> /tmp/daily_brief.log 2>&1
+    0 8 * * * cd /home/YOUR_USER/secretary && /home/YOUR_USER/secretary/.venv/bin/python templates/onboarded/daily_brief.py >> /tmp/daily_brief.log 2>&1
 
 注意:
 - path は絶対 path
