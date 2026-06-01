@@ -581,14 +581,15 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 ### C3-2. 必要な API を有効化する
 
 1. 左メニュー（横三本線）→ `APIs & Services` → `Library`
-2. 検索窓から以下の 5 つを 1 個ずつ検索して、各ページで `Enable` を押す:
+2. 検索窓から以下の 6 つを 1 個ずつ検索して、各ページで `Enable` を押す:
    - **Google Calendar API**
    - **Gmail API**
    - **Google Sheets API**
    - **Google Drive API**
    - **Google Docs API**
+   - **Google Forms API**
 
-5つとも `Manage` ボタンに変わったら有効化完了です。
+6つとも `Manage` ボタンに変わったら有効化完了です。
 
 ### C3-3. OAuth 同意画面を作成
 

@@ -6,7 +6,7 @@
 
 環境変数:
     GOOGLE_TOKEN_PATH  Google 共通 OAuth token.json のパス（デフォルト: integrations/google/token.json）
-                       Calendar / Gmail / Sheets / Drive で同じトークンを共有する
+                       Calendar / Gmail / Sheets / Drive / Docs / Forms で同じトークンを共有する
     STATE_DIR          ステート保存ディレクトリ（デフォルト: ~/secretary/data）
     WEBHOOK_URL        通知先エンドポイント（デフォルト: http://localhost:8781/gmail_notify）
     CONCIERGE_DOMAIN   オプション: このドメインからのメールを "concierge" として扱う

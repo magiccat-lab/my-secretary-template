@@ -1,11 +1,11 @@
 # Google 共通 OAuth
 
-Calendar / Gmail / Sheets / Drive で使う **1 個の OAuth トークン**をここで管理します。
+Calendar / Gmail / Sheets / Drive / Docs / Forms で使う **1 個の OAuth トークン**をここで管理します。
 各機能（`integrations/gcal/`・`integrations/gmail/`・Sheets 同期）はこのトークンを
 `GOOGLE_TOKEN_PATH` 経由で共有します。サービスごとに別トークンは作りません。
 
 ## ファイル
-- `reauth.py` — OAuth フロー（Calendar / Gmail / Sheets / Drive 全スコープを一括で取得）
+- `reauth.py` — OAuth フロー（Calendar / Gmail / Sheets / Drive / Docs / Forms 全スコープを一括で取得）
 - `credentials.json` — Google Cloud で発行した OAuth クライアント（gitignore 対象、手動で置く）
 - `token.json` — `reauth.py` 実行後に生成される認可済みトークン（gitignore 対象）
 

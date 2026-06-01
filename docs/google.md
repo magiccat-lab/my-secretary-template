@@ -1,6 +1,6 @@
-# google.md — Google 連携（Calendar / Gmail / Sheets）
+# google.md — Google 連携（Calendar / Gmail / Sheets / Drive / Docs / Forms）
 
-3つのAPIは1つのOAuthトークン（`integrations/google/token.json`）を共有する。
+これらの API は 1 つの OAuth トークン（`integrations/google/token.json`）を共有する。
 Sheetsまわりのタスクミラーは `docs/tasks.md` に分離。
 
 ---
@@ -18,6 +18,9 @@ Sheetsまわりのタスクミラーは `docs/tasks.md` に分離。
    - Google Calendar API
    - Gmail API
    - Google Sheets API（タスクシート機能を使うときだけ）
+   - Google Drive API
+   - Google Docs API
+   - Google Forms API
 3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
 4. アプリケーションタイプ: **Desktop app**
 5. JSONをダウンロード → エージェントに「DLしたファイルどこ？」と聞いて
