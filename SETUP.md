@@ -563,7 +563,7 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 6. 出てきたダイアログの右下 `Download JSON` をクリック
 
 ダウンロードされた `client_secret_xxxxx.json` を、VPS の
-`~/secretary/integrations/gcal/credentials.json` に置きます。
+`~/secretary/integrations/google/credentials.json` に置きます。
 
 **手元 PC から VPS に送る方法**:
 
@@ -575,18 +575,18 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 
 ```bash
 # Mac / Linux / WSL の bash
-scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
 ```
 
 ```powershell
 # Windows PowerShell native
-scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/gcal/credentials.json
+scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
 ```
 
 ##### 方法 A-代替: `~/.ssh/config` 設定済の場合 [§0-2-3 でやってれば]
 
 ```bash
-scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/gcal/credentials.json
+scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/google/credentials.json
 ```
 
 = alias 経由、 `-i` 不要
@@ -597,7 +597,7 @@ VPS の ryu / myname シェルで:
 
 ```bash
 mkdir -p ~/secretary/integrations/gcal/
-nano ~/secretary/integrations/gcal/credentials.json
+nano ~/secretary/integrations/google/credentials.json
 ```
 
 → nano エディタが開く
@@ -610,7 +610,7 @@ nano ~/secretary/integrations/gcal/credentials.json
 
 ```bash
 # VPS シェルで実行、 ペーストしてから Enter Ctrl-D
-cat > ~/secretary/integrations/gcal/credentials.json <<'EOF'
+cat > ~/secretary/integrations/google/credentials.json <<'EOF'
 { "installed": { "client_id": "...", ... } }
 EOF
 ```
@@ -620,8 +620,8 @@ EOF
 ### C3-4-1. credentials.json が置けたか確認
 
 ```bash
-ls -la ~/secretary/integrations/gcal/credentials.json
-cat ~/secretary/integrations/gcal/credentials.json | head -3
+ls -la ~/secretary/integrations/google/credentials.json
+cat ~/secretary/integrations/google/credentials.json | head -3
 ```
 
 サイズ ≥ 200 byte + `{ "installed": {` 等の json 開始が見えれば OK。
@@ -631,7 +631,7 @@ cat ~/secretary/integrations/gcal/credentials.json | head -3
 VPS 側で実行します。
 
 ```bash
-python3 ~/secretary/integrations/gcal/reauth.py
+python3 ~/secretary/integrations/google/reauth.py
 ```
 
 スクリプトが認証 URL を表示するので、そのURLをブラウザで開きます。
@@ -649,7 +649,7 @@ python3 ~/secretary/integrations/gcal/reauth.py
    **URL全体**をコピー
 6. VPS 側の `reauth.py` のプロンプトにそのURLを貼って Enter
 
-成功すると `~/secretary/integrations/gcal/token.json` が作成されます。
+成功すると `~/secretary/integrations/google/token.json` が作成されます。
 
 ### C3-6. 動作確認
 
@@ -757,7 +757,7 @@ DISCORD_USER_ID=paste_user_id_here
 DISCORD_CHANNEL_RANDOM=paste_channel_id_here
 WEBHOOK_PORT=8781
 WEBHOOK_TOKEN=paste_webhook_token_here
-GOOGLE_TOKEN_PATH=integrations/gcal/token.json
+GOOGLE_TOKEN_PATH=integrations/google/token.json
 GCAL_CALENDAR_ID=primary
 TASK_SHEET_ID=
 GMAIL_ENABLED=false

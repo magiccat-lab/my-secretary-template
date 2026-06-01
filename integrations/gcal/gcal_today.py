@@ -2,7 +2,7 @@
 """今日のカレンダー予定を出力する。
 
 環境変数:
-    GOOGLE_TOKEN_PATH  token.json のパス（デフォルト: integrations/gcal/token.json）
+    GOOGLE_TOKEN_PATH  token.json のパス（デフォルト: integrations/google/token.json）
     GCAL_CALENDAR_ID   読み出すカレンダー ID（デフォルト: "primary"）
 """
 
@@ -20,7 +20,7 @@ load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 TOKEN_PATH = os.path.expanduser(
-    os.getenv("GOOGLE_TOKEN_PATH", os.path.join(_REPO_ROOT, "integrations/gcal/token.json"))
+    os.getenv("GOOGLE_TOKEN_PATH", os.path.join(_REPO_ROOT, "integrations/google/token.json"))
 )
 CALENDAR_ID = os.getenv("GCAL_CALENDAR_ID", "primary")
 

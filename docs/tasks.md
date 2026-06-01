@@ -50,14 +50,14 @@ with update_tasks() as data:
 「タスクをスマホからも見たい」「タスクを共有したい」「Sheetsと同期して」
 
 ### 3.2 前提
-Google OAuthが既に通っていること（`integrations/gcal/token.json` 作成済み）。
+Google OAuthが既に通っていること（`integrations/google/token.json` 作成済み）。
 まだなら `docs/google.md` で先にSheets APIを有効化して認証を通す。
 
 ### 3.3 セットアップ
 1. ユーザーにGoogle Driveで空のシートを作ってもらう
 2. URLからIDを取る: `https://docs.google.com/spreadsheets/d/THIS_PART_IS_THE_ID/edit`
 3. `.env` に `TASK_SHEET_ID=...` をEditで追加
-4. （Sheetsスコープが取れていなければ）`python3 integrations/gcal/reauth.py` を再実行
+4. （Sheetsスコープが取れていなければ）`python3 integrations/google/reauth.py` を再実行
 5. 初回プッシュ:
    ```bash
    cd ~/secretary && python3 scripts/task_sheet_sync.py push

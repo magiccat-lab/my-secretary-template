@@ -72,7 +72,7 @@ commitしない（`.gitignore` 済み）。
 - Discord: 開発者ポータル → Bot → Reset Token → 新トークンを
   `~/.claude/channels/discord/.env` に書き直す
 - Google: Cloud Console → Credentials → 該当 OAuth client → Reset secret、
-  その後 `python3 integrations/gcal/reauth.py` で再認証（詳細: `docs/google.md`）
+  その後 `python3 integrations/google/reauth.py` で再認証（詳細: `docs/google.md`）
 - Webhook: `.env` の `WEBHOOK_TOKEN` を再生成（`python3 -c "import secrets; print(secrets.token_hex(32))"`）、
   同じ値を使う呼び出し側（Tasker、ホームオートメーション）も合わせて更新
 
@@ -101,11 +101,11 @@ webhook スクリプトだけ触った場合は、webhook ウィンドウ内で 
 ユーザーが「引越す」「別の VPS に移す」と言ってきたとき:
 
 1. **現 VPS**: `data/` と `memory/`（あれば）をバックアップ git repo に push、
-   `.env` 2つ と `integrations/gcal/token.json` / `credentials.json` を
+   `.env` 2つ と `integrations/google/token.json` / `credentials.json` を
    安全な場所にコピーしてもらう
 2. **新 VPS**: `SETUP.md` の A〜C をそのまま実行してもらう
    （apt、timezone、claude-code、clone、pip install）
-3. **新 VPS**: バックアップから `.env` 2つ、`integrations/gcal/token.json` /
+3. **新 VPS**: バックアップから `.env` 2つ、`integrations/google/token.json` /
    `credentials.json`、`data/pending_tasks.json` を復元（Editツールでユーザー
    から内容を貼ってもらうか、scp で流してもらう）
 4. **新 VPS**: `bash ~/secretary/start_server.sh` で起動 → `/discord:access`

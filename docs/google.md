@@ -1,6 +1,6 @@
 # google.md — Google 連携（Calendar / Gmail / Sheets）
 
-3つのAPIは1つのOAuthトークン（`integrations/gcal/token.json`）を共有する。
+3つのAPIは1つのOAuthトークン（`integrations/google/token.json`）を共有する。
 Sheetsまわりのタスクミラーは `docs/tasks.md` に分離。
 
 ---
@@ -21,7 +21,7 @@ Sheetsまわりのタスクミラーは `docs/tasks.md` に分離。
 3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
 4. アプリケーションタイプ: **Desktop app**
 5. JSONをダウンロード → エージェントに「DLしたファイルどこ？」と聞いて
-   `integrations/gcal/credentials.json` に置く（ユーザーがscp / sftpで
+   `integrations/google/credentials.json` に置く（ユーザーがscp / sftpで
    送ってもらう、もしくは内容をテキストで貼ってもらってエージェントがWrite）
 
 ---
@@ -29,7 +29,7 @@ Sheetsまわりのタスクミラーは `docs/tasks.md` に分離。
 ## 3. 認証フロー実行
 
 ```bash
-python3 ~/secretary/integrations/gcal/reauth.py
+python3 ~/secretary/integrations/google/reauth.py
 ```
 
 スクリプトの動き:
@@ -63,7 +63,7 @@ ssh -L 8080:localhost:8080 user@your-vps
 ## 5. `.env` を埋める
 
 ```
-GOOGLE_TOKEN_PATH=integrations/gcal/token.json
+GOOGLE_TOKEN_PATH=integrations/google/token.json
 GCAL_CALENDAR_ID=primary           # または your-calendar@gmail.com
 GCAL_REMIND_ENABLED=true
 GMAIL_ENABLED=true                 # Gmail も使うなら
@@ -96,7 +96,7 @@ cron全般の注意点（フルパス・HOME・JST）は `docs/cron.md` 参照�
 refresh tokenが生きていれば自動更新。`invalid_grant` 等が出たら:
 
 ```bash
-python3 ~/secretary/integrations/gcal/reauth.py
+python3 ~/secretary/integrations/google/reauth.py
 ```
 
 新しい `token.json` ができればCalendar / Gmailスクリプトは自動で読む。

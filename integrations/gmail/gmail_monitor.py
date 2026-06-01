@@ -5,7 +5,8 @@
 アーカイブ / 通常）、通常メールだけ webhook で通知する。
 
 環境変数:
-    GMAIL_TOKEN        Gmail OAuth token.json のパス（デフォルト: integrations/gmail/token.json）
+    GOOGLE_TOKEN_PATH  Google 共通 OAuth token.json のパス（デフォルト: integrations/google/token.json）
+                       Calendar / Gmail / Sheets / Drive で同じトークンを共有する
     STATE_DIR          ステート保存ディレクトリ（デフォルト: ~/secretary/data）
     WEBHOOK_URL        通知先エンドポイント（デフォルト: http://localhost:8781/gmail_notify）
     CONCIERGE_DOMAIN   オプション: このドメインからのメールを "concierge" として扱う
@@ -38,8 +39,8 @@ from googleapiclient.discovery import build  # noqa: E402
 from scripts.lib.state_store import load_state, save_state  # noqa: E402
 
 TOKEN = os.getenv(
-    "GMAIL_TOKEN",
-    os.path.join(_REPO_ROOT, "integrations", "gmail", "token.json"),
+    "GOOGLE_TOKEN_PATH",
+    os.path.join(_REPO_ROOT, "integrations", "google", "token.json"),
 )
 STATE_FILE = os.path.join(
     os.getenv("STATE_DIR", os.path.expanduser("~/secretary/data")),

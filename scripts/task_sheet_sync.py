@@ -10,7 +10,7 @@
 1. OAuth トークンに `spreadsheets` スコープが入っていることを確認。
    そのスコープが追加される前に認可済みなら再認可:
 
-       python3 integrations/gcal/reauth.py
+       python3 integrations/google/reauth.py
 
 2. 空の Google Sheet を作成。URL から ID をコピー:
 
@@ -42,7 +42,7 @@
 ## 環境変数
 
     TASK_SHEET_ID       Google Sheet ID（必須 — 未設定ならスクリプトは exit 0）
-    GOOGLE_TOKEN_PATH   OAuth トークンのパス（デフォルト: integrations/gcal/token.json）
+    GOOGLE_TOKEN_PATH   OAuth トークンのパス（デフォルト: integrations/google/token.json）
 """
 
 from __future__ import annotations
@@ -73,13 +73,13 @@ def _client() -> Any:
     token_path = os.path.expanduser(
         os.getenv(
             "GOOGLE_TOKEN_PATH",
-            os.path.join(_REPO_ROOT, "integrations/gcal/token.json"),
+            os.path.join(_REPO_ROOT, "integrations/google/token.json"),
         )
     )
     if not os.path.exists(token_path):
         raise SystemExit(
             f"token not found: {token_path}\n"
-            "run: python3 integrations/gcal/reauth.py"
+            "run: python3 integrations/google/reauth.py"
         )
     creds = Credentials.from_authorized_user_file(token_path)
     return build("sheets", "v4", credentials=creds, cache_discovery=False)

@@ -6,9 +6,9 @@ URL コピー貼り付け方式（ローカル Web サーバー不要）:
   2. 表示された URL をブラウザで開く
   3. アクセスを許可すると、Google が http://localhost:8080/?code=... にリダイレクト
   4. そのリダイレクト URL 全体をコピーして、プロンプトに貼り付け
-  5. token.json が integrations/gcal/token.json に書き込まれる
+  5. token.json が integrations/google/token.json に書き込まれる
 
-先に OAuth クライアントファイルを integrations/gcal/credentials.json に置いてください。
+先に OAuth クライアントファイルを integrations/google/credentials.json に置いてください。
 """
 
 from __future__ import annotations

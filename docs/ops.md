@@ -209,7 +209,7 @@ tail -n 50 /tmp/task_remind.log
 
 ### 9.3 「Google API 403 / トークン失効」
 ```bash
-python3 ~/secretary/integrations/gcal/reauth.py
+python3 ~/secretary/integrations/google/reauth.py
 ```
 URL開いて、リダイレクトURLを貼り戻す。詳細: `docs/google.md`。
 

@@ -5,7 +5,7 @@
 random チャンネルにリマインドを投稿する。
 
 環境変数:
-    GOOGLE_TOKEN_PATH   token.json のパス（デフォルト: integrations/gcal/token.json）
+    GOOGLE_TOKEN_PATH   token.json のパス（デフォルト: integrations/google/token.json）
     GCAL_CALENDAR_ID    対象カレンダー ID（デフォルト: "primary"）
     WEBHOOK_URL         webhook エンドポイント（デフォルト: http://localhost:8781/remind）
 
@@ -34,7 +34,7 @@ from scripts.lib.state_store import load_state, save_state  # noqa: E402
 load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
 TOKEN_PATH = os.path.expanduser(
-    os.getenv("GOOGLE_TOKEN_PATH", os.path.join(_REPO_ROOT, "integrations/gcal/token.json"))
+    os.getenv("GOOGLE_TOKEN_PATH", os.path.join(_REPO_ROOT, "integrations/google/token.json"))
 )
 CALENDAR_ID = os.getenv("GCAL_CALENDAR_ID", "primary")
 STATE_FILE = "/tmp/gcal_remind_state.json"
