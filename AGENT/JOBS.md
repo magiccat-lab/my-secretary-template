@@ -47,8 +47,11 @@
 ### Gmail モニター
 - スクリプト: `integrations/gmail/gmail_monitor.py`
 - Cron: `* * * * *`
-- Env: `GMAIL_ENABLED=true`
+- Env: `GMAIL_ENABLED=true`, `DISCORD_CHANNEL_MAIL`（通知先。未設定なら random）
+- 新着メールは webhook 経由でエージェントに渡り、`DISCORD_CHANNEL_MAIL` に reply で通知する。
 - 自動返信のフィルタ、Google Docs のサイレントアーカイブ付き。
+- 監視は `GOOGLE_TOKEN_PATH` の 1 アカウント。別アカウントは「監視アカウントへ転送」か
+  「そのアカウントの token を足してモニターを増設」で対応。
 
 ### Notion 同期（Tasks）
 - スクリプト: `scripts/integrations/notion/sync_pending_to_notion.py`

@@ -22,6 +22,8 @@ DISCORD_ENV = os.path.expanduser("~/.claude/channels/discord/.env")
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__))
 
 CH_RANDOM = os.getenv('DISCORD_CHANNEL_RANDOM', '')
+# メール通知の宛先。未設定なら random にフォールバック。
+CH_MAIL = os.getenv('DISCORD_CHANNEL_MAIL', '') or CH_RANDOM
 DISCORD_USER_ID = os.getenv('DISCORD_USER_ID', '')
 
 
@@ -111,7 +113,7 @@ async def gmail_notify(request: Request):
     mail_body = body.get('body', '')
 
     prompt = (
-        f"新着メール — random チャンネル({CH_RANDOM})に通知して。"
+        f"新着メール — メールチャンネル({CH_MAIL})に reply で通知して。"
         f"From: {sender} / 件名: {subject} / 抜粋: {mail_body[:300]}"
     )
     await send_to_claude(prompt)

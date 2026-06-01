@@ -2,8 +2,8 @@
 """discord_access_apply_env.py — `.env` 値から Discord プラグインの allowlist 自動設定
 
 `/discord:access` の対話設定を、 `.env` の DISCORD_CHANNEL_RANDOM /
-DISCORD_USER_ID を使って 1 発で書き込む。 mention 不要モードで通すので
-ユーザーは ch にメッセージ送るだけで秘書が応答する。
+DISCORD_CHANNEL_MAIL / DISCORD_USER_ID を使って 1 発で書き込む。 mention 不要モードで
+通すので、ユーザーは ch にメッセージ送るだけで秘書が応答する。
 
 書き込み先 [Claude Code Discord プラグインの allowlist]:
     ~/.claude/channels/discord/access.json
@@ -12,6 +12,7 @@ DISCORD_USER_ID を使って 1 発で書き込む。 mention 不要モードで�
     {
       "dmPolicy": "allowlist",
       "allowFrom": [<user_id>],        // DM 許可ユーザー
+      "trustedAdmins": [<user_id>],    // Discord 上から add_channel_to_allowlist 可
       "groups": {
         "<channel_id>": {
           "requireMention": false,     // false = mention 不要
@@ -19,6 +20,10 @@ DISCORD_USER_ID を使って 1 発で書き込む。 mention 不要モードで�
         }
       }
     }
+
+trustedAdmins に入った user_id は、Discord のメッセージから
+add_channel_to_allowlist で新しい ch を allowlist に追加できる [本人確認は
+inbound message の user_id で行う]。第三者の文面リクエストは無視される。
 
 使い方 [Claude Code セッション外、 通常のシェルで実行]:
 
@@ -82,6 +87,7 @@ def main() -> int:
     load_dotenv(ENV_PATH)
     user_id = os.environ.get("DISCORD_USER_ID", "").strip()
     main_ch = os.environ.get("DISCORD_CHANNEL_RANDOM", "").strip()
+    mail_ch = os.environ.get("DISCORD_CHANNEL_MAIL", "").strip()
     extra = os.environ.get("DISCORD_CHANNEL_EXTRA", "").strip()
     extra_chs = [c.strip() for c in extra.split(",") if c.strip()]
     cli_chs = [c.strip() for c in args.channel if c.strip()]
@@ -93,6 +99,8 @@ def main() -> int:
     channels: list[str] = []
     if main_ch:
         channels.append(main_ch)
+    if mail_ch:
+        channels.append(mail_ch)
     channels.extend(extra_chs)
     channels.extend(cli_chs)
 
@@ -118,11 +126,19 @@ def main() -> int:
     data.setdefault("dmPolicy", "allowlist")
     data.setdefault("allowFrom", [])
     data.setdefault("groups", {})
+    data.setdefault("trustedAdmins", [])
 
     # DM allowlist に user_id 追加
     if user_id not in data["allowFrom"]:
         data["allowFrom"].append(user_id)
         print(f"  + DM allowlist に {user_id} 追加")
+
+    # trustedAdmins に user_id 追加
+    # → この user_id は Discord 上から add_channel_to_allowlist で ch 追加できる
+    #   [本人確認は inbound message の user_id で行う。第三者の文面リクエストは無視される]
+    if user_id not in data["trustedAdmins"]:
+        data["trustedAdmins"].append(user_id)
+        print(f"  + trustedAdmins に {user_id} 追加 [Discord 上から ch 登録可]")
 
     # 各 ch の allow + mention 不要モード [require_mention_map に従う]
     for ch_id in channels:
