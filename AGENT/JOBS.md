@@ -61,6 +61,13 @@
 - `data/pending_tasks.json` を Notion DB に片方向同期（5 分間隔）。
 - セットアップは `SETUP.md` G2 / 詳細 `docs/notion.md` 参照。
 
+### Discord ログ → Log Library（必須・日次）
+- スクリプト: `scripts/integrations/notion/discord_log_to_library.py`
+- Cron: `50 23 * * *`（コア cron セット）
+- Env: `NOTION_TOKEN`, `NOTION_DB_LOG_LIBRARY`, `DISCORD_CHANNEL_*`
+- その日の Discord ログ（24h）を Notion Log Library DB に 1 ページで投下。Notion 未設定なら skip。
+- まとめ資料も md でなく Log Library に集約する方針（AGENT/AGENTS.md「まとめ資料・ログは Notion Log Library へ」）。
+
 ### Wishlist 追加（オンデマンド）
 - スクリプト: `scripts/integrations/notion/wishlist_add.py`
 - Cron: なし（会話駆動。エージェントが「〇〇記録して」を受けたら CLI 実行）

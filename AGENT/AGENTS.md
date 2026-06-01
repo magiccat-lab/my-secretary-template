@@ -40,6 +40,18 @@
 変更を失う可能性があります。「あとでまとめて commit」は禁止。作業単位ごとに
 commit すること。
 
+## まとめ資料・ログは Notion Log Library へ（必須）
+
+調査結果・audit・整理 / 棚卸し・リサーチ・各種まとめ資料は、**ローカルの md
+ファイルに書かず、Notion の Log Library DB（`NOTION_DB_LOG_LIBRARY`）に page として
+投下する**。md はリポジトリ内に散らばって後で参照されなくなるため、まとめ系の
+成果物は Notion に集約するのが SSoT（唯一の正）。
+
+- `Category` を適切に選ぶ（`audit` / `整理` / `research` / `digest` / `その他`）
+- 本文は page 本文に、要点は `Summary` プロパティに、日付は `Date` に
+- Discord のやり取りログも **日次で自動的に** Log Library に送る
+  （`scripts/integrations/notion/discord_log_to_library.py`、§コア cron で必須登録）
+
 ## セッション引き継ぎ
 
 **終了する前に:**

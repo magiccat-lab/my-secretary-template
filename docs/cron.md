@@ -75,6 +75,7 @@ tail -n 100 /tmp/health_check.log
 */5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
 0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+50 23 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
 ```
 > nightly restart（毎日 03:00）は `restart.sh` 内で handoff 生成 → コールドリスタートを
 > まとめてやる。会話コンテキスト肥大で重く/不安定になるのを防ぐ標準装備。単独の

@@ -929,17 +929,17 @@ Notion DB に同期して、スマホからも見られるようにします。N
 7. 表示された **`Internal Integration Secret`** （`secret_xxxx...` で始まる
    長い文字列）をコピーして安全な場所にメモ（これが `NOTION_TOKEN`）
 
-### G2-3. Integration を Tasks / Wishlist DB に許可する
+### G2-3. Integration を各 DB に許可する
 
-このステップを忘れると API が 403 で弾かれます。**複製した Tasks と Wishlist の
-両方**に対して行います。
+このステップを忘れると API が 403 で弾かれます。**複製した Tasks / Wishlist /
+Log Library の 3 つすべて**に対して行います。
 
 1. 複製した Tasks DB ページの右上「**…**」メニューを開く
 2. `Connections` または `+ Add connections` をクリック
 3. 検索窓に G2-2 で作った Integration 名を打って選択 → `Confirm`
-4. Wishlist DB でも同じく Integration を connect
+4. Wishlist DB と Log Library DB でも同じく Integration を connect
 
-### G2-4. Tasks / Wishlist の DB ID を取得
+### G2-4. Tasks / Wishlist / Log Library の DB ID を取得
 
 各 DB ページのブラウザ URL を見ます。例:
 
@@ -949,13 +949,13 @@ https://www.notion.so/USERNAME/Tasks-7c2c9b3a4f1e44d8a9f2e8b1d0c7e6f3?v=...
                                        この 32 文字が DB ID
 ```
 
-`Tasks-`（Wishlist なら `Wishlist-`）の **直後**から `?v=` の **直前**までの
-32 文字（ハイフン無し）が DB ID です。**Tasks と Wishlist の 2 つ**をメモします
-（それぞれ `NOTION_DB_TASKS` / `NOTION_DB_WISHLIST`）。
+DB 名（`Tasks-` / `Wishlist-` / `Log-Library-`）の **直後**から `?v=` の **直前**までの
+32 文字（ハイフン無し）が DB ID です。**3 つ**メモします
+（`NOTION_DB_TASKS` / `NOTION_DB_WISHLIST` / `NOTION_DB_LOG_LIBRARY`）。
 
 ### G2-6. `.env` に追記
 
-VPS 側で、下の **`paste_*` 3 箇所を実際の値に書き換えてから** まるごとコピペして実行
+VPS 側で、下の **`paste_*` 4 箇所を実際の値に書き換えてから** まるごとコピペして実行
 （§G の `.env` 作成と同じ heredoc 方式。エディタは開きません）:
 
 ```bash
@@ -963,6 +963,7 @@ cat >> ~/secretary/.env <<'EOF'
 NOTION_TOKEN=secret_paste_here
 NOTION_DB_TASKS=paste_tasks_db_id_here
 NOTION_DB_WISHLIST=paste_wishlist_db_id_here
+NOTION_DB_LOG_LIBRARY=paste_log_library_db_id_here
 EOF
 ```
 
@@ -972,7 +973,7 @@ EOF
 grep -E '^NOTION_' ~/secretary/.env
 ```
 
-3 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
+4 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
 
 ### G2-7. 同期スクリプトを 1 回手動実行して確認
 
@@ -1255,7 +1256,7 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 
 #### 5. コア cron を登録する（必須）
 
-秘書を安定運用するための **必須 cron 3 本**をまとめて登録します。`nightly restart`
+秘書を安定運用するための **必須 cron 4 本**をまとめて登録します。`nightly restart`
 （毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・不安定になるのを防ぐ
 標準装備で、handoff 生成 → コールドリスタートを内包します。通常シェル（screen の外）で、
 まるごとコピペして実行:
@@ -1265,6 +1266,7 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 */5 * * * * /bin/bash $HOME/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 30 6,22 * * * /usr/bin/python3 $HOME/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
 0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+50 23 * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
 EOF
 ) | crontab -
 ```
@@ -1272,6 +1274,8 @@ EOF
 - `health_check.sh`（5 分おき）… 落ちていたら自動で復帰
 - `task_remind.py`（毎日 06:30 / 22:30）… 未完了タスクのリマインド
 - `restart.sh`（毎日 03:00）… handoff 生成 + コールドリスタート（nightly restart）
+- `discord_log_to_library.py`（毎日 23:50）… その日の Discord ログを Notion Log Library に送る
+  （Notion 未設定なら自動 skip）
 
 登録できたか確認:
 
