@@ -9,4 +9,4 @@
 - `reauth.py` — OAuth フロー（Calendar / Gmail / Sheets 全スコープ）
 - `token.json` / `credentials.json` — gitignore 対象
 
-セットアップ・OAuth フロー・再認証は `docs/SETUP.md` セクション 10 を参照。
+セットアップ・OAuth フロー・再認証はリポジトリ直下の `../../SETUP.md` セクション C3 を参照。

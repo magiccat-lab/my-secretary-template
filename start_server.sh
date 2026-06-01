@@ -2,7 +2,10 @@
 # 秘書（secretary）の起動スクリプト
 # 使い方: bash ~/secretary/start_server.sh
 
-export HOME="/home/$(whoami)"
+# HOME は実行ユーザーの実ホームを使う（root なら /root、一般ユーザーなら /home/ユーザー名）。
+# /home/$(whoami) 決め打ちだと root 実行時に存在しない /home/root を指して失敗するため、
+# passwd データベースから実ホームを引く。
+export HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
 export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"
 
 SECRETARY_DIR="$HOME/secretary"

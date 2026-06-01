@@ -138,7 +138,10 @@ def main() -> int:
         return 1
 
     data = json.loads(PENDING_JSON.read_text(encoding="utf-8"))
-    tasks = data.get("tasks", [])
+    # pending_tasks.json はセクション構造 {"primary": [...], ...}（docs/tasks.md 参照）。
+    # 全セクション（list 値）を flatten して同期する。デフォルトは "primary" のみだが、
+    # 任意のセクションを足しても拾えるようにしておく。
+    tasks = [t for section in data.values() if isinstance(section, list) for t in section]
 
     created = updated = failed = 0
     for task in tasks:
