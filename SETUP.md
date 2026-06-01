@@ -903,7 +903,20 @@ chmod 600 ~/secretary/.env
 Notion DB に同期して、スマホからも見られるようにします。Notion の無料プラン
 で十分動きます。**使わない人はこのセクション全部スキップして H に進んで OK。**
 
-### G2-1. Notion Integration を作る
+### G2-1. テンプレートを複製する
+
+プロパティ設定済みの **Tasks / Wishlist DB** を用意してあります。手作業で
+プロパティを作る必要はありません。下のテンプレートを自分のワークスペースに
+複製するだけです。
+
+1. ブラウザで公開テンプレを開く:
+   **https://amusing-toothpaste-b61.notion.site/my-secretary-template-3726db67136b816dbdb9e814c3ae38da**
+2. 右上の **「複製」（Duplicate）** をクリック
+3. 複製先に **自分のワークスペース**を選ぶ
+4. 「🤖 my-secretary-template 公開テンプレ」ページが自分のワークスペースに入る。
+   中に **Tasks** と **Wishlist** の 2 つの DB がある（プロパティ設定済み）
+
+### G2-2. Notion Integration を作る
 
 ブラウザ作業:
 
@@ -916,38 +929,19 @@ Notion DB に同期して、スマホからも見られるようにします。N
 7. 表示された **`Internal Integration Secret`** （`secret_xxxx...` で始まる
    長い文字列）をコピーして安全な場所にメモ（これが `NOTION_TOKEN`）
 
-### G2-2. Notion DB（Tasks 用）を作る
+### G2-3. Integration を Tasks / Wishlist DB に許可する
 
-別タブで Notion を開いて作業:
+このステップを忘れると API が 403 で弾かれます。**複製した Tasks と Wishlist の
+両方**に対して行います。
 
-1. 自分のワークスペースの好きなページに `/database` と入力
-2. メニューから **`Database - Full page`** を選ぶ
-3. ページタイトルを `Tasks` 等に変更
-4. デフォルトの `Name` プロパティ（title）はそのまま
-5. 右上の `+` で以下のプロパティを順に追加（**全部必須**、型を間違えると同期失敗）:
-
-| プロパティ名 | 型 |
-|---|---|
-| `Done` | Checkbox |
-| `SourceKey` | Text（rich_text） |
-| `Created` | Date |
-| `Completed` | Date |
-| `Remind` | Date |
-| `Detail` | Text（rich_text） |
-| `Type` | Select（任意。あると便利） |
-
-### G2-3. Integration を DB に許可する
-
-このステップを忘れると API が 403 で弾かれます。
-
-1. Tasks DB ページの右上「**…**」メニューを開く
+1. 複製した Tasks DB ページの右上「**…**」メニューを開く
 2. `Connections` または `+ Add connections` をクリック
-3. `Connect to` の検索窓に G2-1 で作った Integration 名を打って選択
-4. 確認ダイアログで `Confirm`
+3. 検索窓に G2-2 で作った Integration 名を打って選択 → `Confirm`
+4. Wishlist DB でも同じく Integration を connect
 
-### G2-4. Tasks DB の ID を取得
+### G2-4. Tasks / Wishlist の DB ID を取得
 
-Tasks DB ページのブラウザ URL を見ます。例:
+各 DB ページのブラウザ URL を見ます。例:
 
 ```
 https://www.notion.so/USERNAME/Tasks-7c2c9b3a4f1e44d8a9f2e8b1d0c7e6f3?v=...
@@ -955,25 +949,9 @@ https://www.notion.so/USERNAME/Tasks-7c2c9b3a4f1e44d8a9f2e8b1d0c7e6f3?v=...
                                        この 32 文字が DB ID
 ```
 
-`Tasks-` の **直後** から `?v=` の **直前** までの 32 文字（ハイフン無し）が
-DB ID です。コピーしてメモ。
-
-### G2-5. Wishlist DB も同じ手順で作る（任意）
-
-「行きたい店」「欲しい本」「あとで読みたい記事」用に別 DB を 1 個。
-G2-2 と同じ要領で `Wishlist` DB を作り、プロパティを以下に揃えます:
-
-| プロパティ名 | 型 |
-|---|---|
-| `名前` | Title（デフォルト） |
-| `カテゴリ` | Select（飲食店 / Tips / ショッピング 等） |
-| `ステータス` | Select（未訪問 / 行った / 不要 等） |
-| `エリア` | Text |
-| `情報源` | URL or Text |
-| `メモ` | Text |
-| `追加日` | Date |
-
-G2-3, G2-4 を同様に行って、ID をメモします。
+`Tasks-`（Wishlist なら `Wishlist-`）の **直後**から `?v=` の **直前**までの
+32 文字（ハイフン無し）が DB ID です。**Tasks と Wishlist の 2 つ**をメモします
+（それぞれ `NOTION_DB_TASKS` / `NOTION_DB_WISHLIST`）。
 
 ### G2-6. `.env` に追記
 
