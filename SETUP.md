@@ -325,7 +325,8 @@ date   # 確認。JST の時刻が出れば OK
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw enable
+sudo ufw --force enable   # --force で確認プロンプトを飛ばす（OpenSSH を先に許可済みなので安全）
+sudo ufw status           # 確認: Status: active と 22/tcp ALLOW が見えれば OK
 ```
 
 ---
@@ -361,7 +362,7 @@ echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
 which bun
 ```
 
-> 💡 それでも出ない場合は **一度 SSH を切って入り直す**（`exit` → 再度 `ssh myname@xxx.xxx.xxx.xxx`）。
+> 💡 それでも出ない場合は **一度 SSH を切って入り直す**（`exit` → 再度 `ssh my-vps`、エイリアス未設定なら `ssh -i ~/.ssh/my-vps.pem root@xxx.xxx.xxx.xxx`）。
 > shell の起動時に `.bashrc` が読み直されるので、これで通ることが多いです。
 
 ### B-3. bun 経由で Claude Code を入れる
@@ -406,17 +407,24 @@ Claude のアカウントで認証してください（VPS 上にブラウザは
 ```bash
 git clone https://github.com/magiccat-lab/my-secretary-template.git ~/secretary
 cd ~/secretary
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
-Ubuntu 24.04 以降だと `pip install` が `externally-managed-environment`
+Ubuntu 24.04 以降だと `pip3 install` が `externally-managed-environment`
 というエラーで弾かれることがあります。その場合は以下を使ってください。
 
 ```bash
-pip install --break-system-packages -r requirements.txt
+pip3 install --break-system-packages -r requirements.txt
 ```
 
-`~/secretary/` の下に設定ファイルやスクリプトが並んでいれば OK です。
+clone と依存導入ができたか確認:
+
+```bash
+test -f ~/secretary/SETUP.md && test -f ~/secretary/start_server.sh && echo "clone OK"
+python3 -c "import requests, dotenv; print('deps OK')"
+```
+
+`clone OK` と `deps OK` の両方が出れば C 完了です。
 
 ---
 
@@ -572,15 +580,16 @@ push が成功したら、GitHub 側のリポジトリに `SETUP.md` などが�
 ##### 方法 A: scp で送る [手元 PC で実行]
 
 > ⚠️ **scp も ssh と同じく `-i` で鍵を指定しないと `Permission denied (publickey)`** で詰む、 §0-2-3 の `~/.ssh/config` エイリアス未設定の場合は明示要。
+> 接続先は **root@VPS の IP**（§0-3 で一般ユーザーを作った人だけ `root` を自分のユーザー名に読み替え）。`xxx.xxx.xxx.xxx` は実際の VPS IP に置換。
 
 ```bash
 # Mac / Linux / WSL の bash
-scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
+scp -i ~/.ssh/my-vps.pem ~/Downloads/client_secret_xxxxx.json root@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
 ```
 
 ```powershell
 # Windows PowerShell native
-scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json myname@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
+scp -i $HOME\.ssh\my-vps.pem $HOME\Downloads\client_secret_xxxxx.json root@xxx.xxx.xxx.xxx:~/secretary/integrations/google/credentials.json
 ```
 
 ##### 方法 A-代替: `~/.ssh/config` 設定済の場合 [§0-2-3 でやってれば]
@@ -593,10 +602,10 @@ scp ~/Downloads/client_secret_xxxxx.json my-vps:~/secretary/integrations/google/
 
 ##### 方法 B: nano で貼り付ける [scp が動かない / 確実に楽な方法]
 
-VPS の ryu / myname シェルで:
+VPS のシェル（root、または §0-3 で作った一般ユーザー）で:
 
 ```bash
-mkdir -p ~/secretary/integrations/gcal/
+mkdir -p ~/secretary/integrations/google/
 nano ~/secretary/integrations/google/credentials.json
 ```
 
@@ -686,6 +695,13 @@ python3 ~/secretary/integrations/gcal/gcal_today.py
    - Use Slash Commands
 9. 下に出てくる URL をコピーしてブラウザで開く
 10. 自分のサーバーを選んで **「認証」** → bot がサーバーに参加する
+
+> 💡 **まだ Discord サーバーを持っていない場合**は、bot を招待する前に作る:
+> Discord 左端のサーバー一覧の **「＋」** → **「オリジナルの作成」** →
+> **「自分と友達のため」** → 名前を入れて作成。このサーバーが秘書との
+> やり取り場所になる。チャンネルはデフォルトの `# general` をそのまま
+> 使ってもいいし、右クリック → チャンネル作成で専用チャンネルを足してもいい
+> （§E でそのチャンネル ID を使う）。
 
 取ったトークンを VPS に置きます。`ここにトークンを貼る` の部分だけ書き換えて
 実行してください。
@@ -854,44 +870,70 @@ G2-3, G2-4 を同様に行って、ID をメモします。
 
 ### G2-6. `.env` に追記
 
-VPS 側で:
+VPS 側で、下の **`paste_*` 3 箇所を実際の値に書き換えてから** まるごとコピペして実行
+（§G の `.env` 作成と同じ heredoc 方式。エディタは開きません）:
 
 ```bash
-nano ~/secretary/.env
-```
-
-ファイル末尾に追記して保存（`Ctrl+O` → Enter → `Ctrl+X`）:
-
-```
+cat >> ~/secretary/.env <<'EOF'
 NOTION_TOKEN=secret_paste_here
 NOTION_DB_TASKS=paste_tasks_db_id_here
 NOTION_DB_WISHLIST=paste_wishlist_db_id_here
+EOF
 ```
+
+追記できたか確認:
+
+```bash
+grep -E '^NOTION_' ~/secretary/.env
+```
+
+3 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
 
 ### G2-7. 同期スクリプトを 1 回手動実行して確認
 
+まず動作確認用にタスクを 1 件足してから同期します（テンプレート直後は
+`pending_tasks.json` が空なので、何も足さないと `created=0` になり成否が
+分かりません）:
+
 ```bash
+# 確認用タスクを 1 件追加（pending_tasks.json は {"primary": [...]} 構造）
+python3 - <<'EOF'
+import json, pathlib
+p = pathlib.Path.home() / "secretary" / "data" / "pending_tasks.json"
+data = json.loads(p.read_text()) if p.exists() else {"primary": []}
+data.setdefault("primary", []).append(
+    {"title": "Notion 同期テスト", "done": False, "created_at": "2026-01-01"}
+)
+p.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+print("added")
+EOF
 python3 ~/secretary/scripts/integrations/notion/sync_pending_to_notion.py
 ```
 
-`✅ sync 完了: created=N / updated=M / failed=0` のような行が出れば成功。
-Notion の Tasks DB を見ると、ローカルの pending_tasks.json の中身が反映
-されているはずです。
+`✅ sync 完了: created=1 / updated=0 / failed=0`（`created` か `updated` が
+**1 以上**）が出れば成功。`failed=0` だけでなく **created/updated が増えている**
+ことを必ず確認してください。Notion の Tasks DB に「Notion 同期テスト」の行が
+見えれば完璧です（確認後はその行を消して OK）。
 
 ### G2-8. 5 分おきに自動同期する cron を追加
 
+エディタを開かず、下のコマンドをまるごとコピペして実行すれば 1 行追記されます
+（`$HOME` が自動でユーザーのホームに展開されるので、ユーザー名の書き換えは不要）:
+
 ```bash
-crontab -e
+(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_notion.log 2>&1") | crontab -
 ```
 
-末尾に 1 行追加（`YOUR_USER` を自分のユーザー名に書き換え）:
+登録できたか確認:
 
+```bash
+crontab -l | grep sync_pending_to_notion
 ```
-*/5 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_notion.log 2>&1
-```
+
+その 1 行が表示されれば OK。
 
 > ⚠️ `python3` ではなく **絶対パスの `/usr/bin/python3`** を使うこと。
-> cron の PATH には `python3` が無いことがあります。
+> cron の PATH には `python3` が無いことがあります（上のコマンドは対応済み）。
 
 ### G2-9. Wishlist 追加コマンドの動作確認（任意）
 
