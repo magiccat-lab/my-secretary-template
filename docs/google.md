@@ -94,6 +94,29 @@ cron全般の注意点（フルパス・HOME・JST）は `docs/cron.md` 参照�
 
 ---
 
+## 7-2. 別アカウントのメールも監視したい
+
+`gmail_monitor.py` は `GOOGLE_TOKEN_PATH` の **1 アカウント**を見る。複数アカウントの
+メールを 1 つの秘書に集めたい場合は次の 2 ルートのどちらか:
+
+**(a) 転送（おすすめ・簡単）**
+監視対象アカウント側でメール転送を設定し、`GOOGLE_TOKEN_PATH` のアカウントへ
+転送する。Gmail なら「設定 → メール転送と POP/IMAP → 転送先を追加」。
+監視は 1 アカウントのまま、別アドレス宛のメールも届く。
+
+**(b) アカウントごとに token を足す（複数アカウントを独立に監視）**
+監視したいアカウントで OAuth クライアントを用意し、`reauth.py` 相当でそのアカウントの
+`token.json` を別パスに作る。`gmail_monitor.py` を `GOOGLE_TOKEN_PATH` 環境変数で
+そのトークンを指すように、アカウント別の cron 行を追加する:
+
+```cron
+* * * * * GOOGLE_TOKEN_PATH=/home/YOUR_USER/secretary/integrations/google/token_sub.json /usr/bin/python3 /home/YOUR_USER/secretary/integrations/gmail/gmail_monitor.py >> /tmp/gmail_monitor_sub.log 2>&1
+```
+
+状態ファイルがアカウント間で混ざらないよう、`STATE_DIR` も分けると安全。
+
+---
+
 ## 8. 再認証
 
 refresh tokenが生きていれば自動更新。`invalid_grant` 等が出たら:

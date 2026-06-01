@@ -801,11 +801,11 @@ chmod 600 ~/.claude/channels/discord/.env
 
 必須チャンネル（テキストチャンネル）:
 
-- `random` … メインのやり取り（テンプレ既定の `DISCORD_CHANNEL_RANDOM`）。まずはこれだけでも動く
+- `random` … メインのやり取り（テンプレ既定の `DISCORD_CHANNEL_RANDOM`）
 - `log` … 秘書の作業ログ・自動通知の流し先
-- `mail` … メール通知の宛先（任意）。テンプレは Gmail モニター（`gmail_monitor.py`）を
-  **オプションの cron** として同梱しています（既定は `GMAIL_ENABLED=false` で OFF、
-  §C3 / `docs/cron.md` で有効化）。メールを使うなら専用チャンネルを 1 つ用意すると見やすい
+- `mail` … メール通知の宛先（`DISCORD_CHANNEL_MAIL`）。Gmail モニター（`gmail_monitor.py`、
+  テンプレ同梱・既定 OFF・§C3 / `docs/cron.md` で有効化）の新着通知がここに流れます。
+  メールが混ざると `random` が荒れるので最初から分けておくのがおすすめ
 
 推奨フォーラム:
 
@@ -819,9 +819,10 @@ chmod 600 ~/.claude/channels/discord/.env
 
 ---
 
-## E. 必要な Discord の ID を3つ取る
+## E. 必要な Discord の ID を取る
 
-Discord クライアントでの作業です。
+Discord クライアントでの作業です。`DISCORD_USER_ID`・`DISCORD_CHANNEL_RANDOM`・
+`DISCORD_CHANNEL_MAIL` の 3 つを控えます。
 
 ### 1. 開発者モードをオン
 
@@ -832,14 +833,18 @@ Discord の設定を開く → 左メニューの **「詳細設定」** → **�
 自分のアイコン or ユーザー名を右クリック → **「ユーザー ID をコピー」**。
 数字の羅列をメモ（これが `DISCORD_USER_ID`）。
 
-### 3. 秘書と話すチャンネル ID
+### 3. メインのチャンネル ID（`random`）
 
-bot を招待したサーバーで、秘書とやり取りするチャンネル（まだなければ
-`#bot` みたいな名前で1つ作る）を右クリック → **「チャンネル ID をコピー」**。
-これが `DISCORD_CHANNEL_RANDOM`。
+秘書とやり取りするメインチャンネル（まだなければ `random` を作る）を右クリック
+→ **「チャンネル ID をコピー」**。これが `DISCORD_CHANNEL_RANDOM`。
 
-用途別にチャンネルを分けたくなったら、同じ要領で追加の ID を控えておいて
-ください（任意）。
+### 4. メールチャンネル ID（`mail`）
+
+§D の設計ガイドで作った `mail` チャンネルを右クリック → **「チャンネル ID をコピー」**。
+これが `DISCORD_CHANNEL_MAIL`（Gmail 通知の宛先）。
+
+> その他に `log` やフォーラムを作った場合も、同じ要領で ID を控えておくと
+> §I の allowlist 登録（`DISCORD_CHANNEL_EXTRA`）でまとめて許可できます。
 
 ---
 
@@ -861,16 +866,18 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 - `DISCORD_USER_ID`（数字）
 - `DISCORD_CHANNEL_RANDOM`（数字）
+- `DISCORD_CHANNEL_MAIL`（数字）
 - `WEBHOOK_TOKEN`（16進文字列）
 
 トークン類を外部に送りたくないので、これは VPS のターミナルだけで完結させます。
-下のコマンドの **`paste_*_here` の3箇所だけ書き換えて**、まるごとコピペして実行
+下のコマンドの **`paste_*_here` の4箇所だけ書き換えて**、まるごとコピペして実行
 してください。
 
 ```bash
 cat <<'EOF' > ~/secretary/.env
 DISCORD_USER_ID=paste_user_id_here
 DISCORD_CHANNEL_RANDOM=paste_channel_id_here
+DISCORD_CHANNEL_MAIL=paste_mail_channel_id_here
 WEBHOOK_PORT=8781
 WEBHOOK_TOKEN=paste_webhook_token_here
 GOOGLE_TOKEN_PATH=integrations/google/token.json
@@ -1235,9 +1242,10 @@ python3 ~/secretary/scripts/discord_access_apply_env.py
 ```
 
 これで:
-- `DISCORD_CHANNEL_RANDOM` を allowlist に追加
+- `DISCORD_CHANNEL_RANDOM` と `DISCORD_CHANNEL_MAIL` を allowlist に追加
 - `requireMention: false` [mention 不要、 ch のメッセージ全部に応答]
 - `DISCORD_USER_ID` を DM allow にも追加
+- `DISCORD_USER_ID` を `trustedAdmins` にも追加 [後述: 次回以降は Discord 上から ch 登録できる]
 
 複数 ch 一括許可したい場合は env で追加:
 ```bash
@@ -1245,6 +1253,12 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 ```
 
 設定反映には `screen -r secretary` でセッションに戻って `/reload` [or 一旦 exit + 再起動]
+
+> 💡 **次回以降は Discord 上からチャンネルを足せます。** 上記で `DISCORD_USER_ID` が
+> `trustedAdmins` に入るので、新しいチャンネル / フォーラムを作ったら、その ch で秘書に
+> 「このチャンネルを allowlist に追加して」と頼むだけで登録できます（本人確認は
+> あなたの Discord user_id で行われ、第三者の文面リクエストは無視されます）。
+> ターミナルに戻らずに運用を広げられる導線です。
 
 ##### 4-B. 対話 [元の方式、 細かく制御したい時]
 
