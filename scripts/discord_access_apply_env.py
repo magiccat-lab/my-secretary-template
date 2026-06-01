@@ -29,7 +29,7 @@ DISCORD_USER_ID を使って 1 発で書き込む。 mention 不要モードで�
     DISCORD_CHANNEL_EXTRA="123456,789012" python3 ... apply_env.py
 
     # 3. CLI 引数で特定 ch を 1 発追加 [agent からも叩きやすい形]
-    python3 ~/secretary/scripts/discord_access_apply_env.py --channel 1500119477604454500
+    python3 ~/secretary/scripts/discord_access_apply_env.py --channel 123456789012345678
     python3 ~/secretary/scripts/discord_access_apply_env.py --channel 1234 --require-mention
 
 agent からの自動 allow 設計:
