@@ -73,6 +73,7 @@ tail -n 100 /tmp/health_check.log
 ### 最小セット（セットアップ時に必ず入れる）
 ```cron
 */5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
+*/2 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/session_watchdog.py >> /tmp/session_watchdog.log 2>&1
 30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
 0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 50 23 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
