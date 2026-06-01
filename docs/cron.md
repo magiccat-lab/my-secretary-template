@@ -70,20 +70,19 @@ tail -n 100 /tmp/health_check.log
 
 ## 6. 推奨ジョブ一覧
 
-### 最小セット
+### 最小セット（セットアップ時に必ず入れる）
 ```cron
 */5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
-0 3 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/daily_handoff.py >> /tmp/daily_handoff.log 2>&1
+0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 ```
+> nightly restart（毎日 03:00）は `restart.sh` 内で handoff 生成 → コールドリスタートを
+> まとめてやる。会話コンテキスト肥大で重く/不安定になるのを防ぐ標準装備。単独の
+> `daily_handoff.py` は restart に内包されるので別途登録は不要。週1で十分なら
+> `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に。
 
 ### オプション
 ```cron
-# コールドリスタート（推奨: 毎日 03:00 の nightly。会話コンテキスト肥大で重く/不安定になるのを防ぐ）
-0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
-# 週1で十分なら代わりにこちら（日曜 03:10）:
-# 10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
-
 # Google Calendar 30分前リマインダー
 * * * * * /usr/bin/python3 /home/YOUR_USER/secretary/integrations/gcal/gcal_remind.py >> /tmp/gcal_remind.log 2>&1
 

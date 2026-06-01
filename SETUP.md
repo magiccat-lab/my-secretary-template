@@ -1253,23 +1253,37 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 
 終わったら `Ctrl+A D` で抜けます。
 
-#### 5. nightly restart を登録する（推奨）
+#### 5. コア cron を登録する（必須）
 
-24/7 で動かしっぱなしにすると、会話コンテキストが溜まって秘書が重く・不安定に
-なってきます。毎日 03:00 に handoff を残してコールドリスタートする cron を入れておくと
-クリーンに保てます。通常シェル（screen の外）で実行:
+秘書を安定運用するための **必須 cron 3 本**をまとめて登録します。`nightly restart`
+（毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・不安定になるのを防ぐ
+標準装備で、handoff 生成 → コールドリスタートを内包します。通常シェル（screen の外）で、
+まるごとコピペして実行:
 
 ```bash
-(crontab -l 2>/dev/null; echo "0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; cat <<EOF
+*/5 * * * * /bin/bash $HOME/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
+30 6,22 * * * /usr/bin/python3 $HOME/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
+0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+EOF
+) | crontab -
 ```
+
+- `health_check.sh`（5 分おき）… 落ちていたら自動で復帰
+- `task_remind.py`（毎日 06:30 / 22:30）… 未完了タスクのリマインド
+- `restart.sh`（毎日 03:00）… handoff 生成 + コールドリスタート（nightly restart）
 
 登録できたか確認:
 
 ```bash
-crontab -l | grep restart.sh
+crontab -l
 ```
 
-> 週1で十分なら `0 3 * * *` の部分を `10 3 * * 0`（日曜 03:10）にしてください。
+3 本とも並んでいれば OK。
+
+> nightly restart は週1で十分なら、上の `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に
+> 変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、各機能を
+> 有効化するときに追加します（§G2、`docs/cron.md`）。
 
 ---
 
