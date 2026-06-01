@@ -1187,7 +1187,7 @@ Claude Code は起動時に 2 種類の UI prompt を出す:
 - **壁1**: `--dangerously-skip-permissions` 起動時の `Bypass Permissions` 確認 [初回のみ、 下矢印 + Enter で accept]
 - **壁2**: `Trust this folder?` ダイアログ [初回のみ、 Enter で accept]
 
-このテンプレートでは `scripts/claude_wrapper.exp` [expect script] が両方を自動 accept するので、 **手動 attach は不要**。 §A で `apt install expect` 入れていれば、 `start_server.sh` / `weekly_restart.sh` は壁を素通りで起動する。
+このテンプレートでは `scripts/claude_wrapper.exp` [expect script] が両方を自動 accept するので、 **手動 attach は不要**。 §A で `apt install expect` 入れていれば、 `start_server.sh` / `restart.sh` は壁を素通りで起動する。
 
 > 💡 受諾状態は `~/.claude.json` の `projects[$HOME/secretary].hasTrustDialogAccepted` に永続化される、 2 回目以降は expect も即抜ける [timeout=30s]。
 >
@@ -1274,6 +1274,24 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 > ⚠️ **この操作はターミナルからユーザー自身がやる必要があります**（安全上の理由で、 AI 側から代行できません）
 
 終わったら `Ctrl+A D` で抜けます。
+
+#### 5. nightly restart を登録する（推奨）
+
+24/7 で動かしっぱなしにすると、会話コンテキストが溜まって秘書が重く・不安定に
+なってきます。毎日 03:00 に handoff を残してコールドリスタートする cron を入れておくと
+クリーンに保てます。通常シェル（screen の外）で実行:
+
+```bash
+(crontab -l 2>/dev/null; echo "0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1") | crontab -
+```
+
+登録できたか確認:
+
+```bash
+crontab -l | grep restart.sh
+```
+
+> 週1で十分なら `0 3 * * *` の部分を `10 3 * * 0`（日曜 03:10）にしてください。
 
 ---
 
@@ -1407,7 +1425,7 @@ ssh -i "$HOME\.ssh\my-vps.pem" user@xxx.xxx.xxx.xxx
 
 ### 9. `screen -list` が `No Sockets found in /run/screen/S-USER` で起動失敗する
 
-`bash scripts/daily_restart.sh` 等で起動したのに `screen -list` で何も出ない場合、 起動コマンドの中身 [expect script 等] が即落ちして screen も死んでる可能性が高い。
+`bash start_server.sh` / `bash scripts/restart.sh` 等で起動したのに `screen -list` で何も出ない場合、 起動コマンドの中身 [expect script 等] が即落ちして screen も死んでる可能性が高い。
 
 切り分け: **expect script を直叩き**して error 出てないか確認:
 

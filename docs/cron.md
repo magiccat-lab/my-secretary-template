@@ -79,8 +79,10 @@ tail -n 100 /tmp/health_check.log
 
 ### オプション
 ```cron
-# 週次再起動（24/7 で7日以上回すなら有効化）
-10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/weekly_restart.sh >> /tmp/weekly_restart.log 2>&1
+# コールドリスタート（推奨: 毎日 03:00 の nightly。会話コンテキスト肥大で重く/不安定になるのを防ぐ）
+0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+# 週1で十分なら代わりにこちら（日曜 03:10）:
+# 10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 
 # Google Calendar 30分前リマインダー
 * * * * * /usr/bin/python3 /home/YOUR_USER/secretary/integrations/gcal/gcal_remind.py >> /tmp/gcal_remind.log 2>&1

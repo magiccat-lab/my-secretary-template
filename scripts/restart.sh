@@ -1,9 +1,10 @@
 #!/bin/bash
-# 週次再起動（日曜 3:10 JST）
+# コールドリスタート（cron で実行する想定。推奨は毎日 03:00 の nightly）
 #
-# 理由: Claude Code を screen で長期間動かすと、不安定な挙動を引き起こす
-# ステートが溜まることがある。VPS 上では週1のコールドリスタートで、日中の
-# 作業を邪魔せずにクリーンに保てる。
+# 理由: Claude Code を screen で長期間動かすと会話コンテキストやステートが
+# 溜まって重く・不安定になる。定期コールドリスタートで handoff を残しつつ
+# クリーンな状態に戻す。スケジュールは cron 側で決める（毎日 / 週1 どちらでも、
+# このスクリプト自体は共通）。
 #
 # ステップ:
 #   1. handoff.md を生成（次セッションが再開位置を分かるように）
@@ -11,19 +12,22 @@
 #   3. start_server.sh で起動し直す
 #   4. 「resumed!」をキュー投入（新セッションが handoff.md を読むように）
 #
-# 有効化するには crontab の以下の行をコメント解除:
-#   # 10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/weekly_restart.sh
+# 有効化するには crontab に以下を追加（推奨: 毎日 03:00 の nightly）:
+#   0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+# 週1で十分なら（日曜 03:10）:
+#   10 3 * * 0 /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 #
 # Claude Code を自動ローテートする仕組み（systemd timer など）を使ってる
 # なら不要。
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-export HOME="/home/$(whoami)"
+# 実行ユーザーの実ホーム（root なら /root、一般ユーザーなら /home/ユーザー名）
+export HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
 export PATH="$HOME/.bun/bin:$HOME/.local/bin:$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 source "$SCRIPT_DIR/../.env"
-LOG_FILE="/tmp/weekly_restart.log"
+LOG_FILE="/tmp/restart.log"
 
 DISCORD_TOKEN=$(grep '^DISCORD_BOT_TOKEN=' "$HOME/.claude/channels/discord/.env" 2>/dev/null | cut -d= -f2)
 CH_NOTIFY="${DISCORD_CHANNEL_RANDOM}"
@@ -53,13 +57,13 @@ queue_message() {
 # 死んだソケットの掃除
 screen -wipe > /dev/null 2>&1
 
-log "=== 週次再起動 開始 ==="
+log "=== 再起動 開始 ==="
 
 # 1. handoff を生成
 python3 "$SCRIPT_DIR/daily_handoff.py" >> "$LOG_FILE" 2>&1 || log "handoff 生成失敗（続行します）"
 
 # 2. ログチャンネルに通知
-discord_send "$CH_NOTIFY" "週次再起動を開始します ($(date '+%H:%M'))"
+discord_send "$CH_NOTIFY" "再起動を開始します ($(date '+%H:%M'))"
 
 # 3. secretary の screen を再起動（リトライあり）
 log "secretary を再起動中..."
@@ -88,7 +92,7 @@ for attempt in 1 2 3; do
     else
         log "secretary 再起動失敗 (attempt $attempt)"
         if [ $attempt -eq 3 ]; then
-            discord_send "$CH_NOTIFY" "週次再起動が3回失敗しました — 手動確認してください"
+            discord_send "$CH_NOTIFY" "再起動が3回失敗しました — 手動確認してください"
         fi
     fi
 done
@@ -101,10 +105,10 @@ sleep 5
 if screen -S secretary -X select . > /dev/null 2>&1; then
     log "再起動 OK"
     sleep 3
-    queue_message "/tmp/claude_queue.txt" "resumed! (weekly restart) — data/handoff.md を読んでください"
-    discord_send "$CH_NOTIFY" "週次再起動 完了"
+    queue_message "/tmp/claude_queue.txt" "resumed! (nightly restart) — data/handoff.md を読んでください"
+    discord_send "$CH_NOTIFY" "再起動 完了"
 else
-    discord_send "$CH_NOTIFY" "週次再起動 結果不明 — 実行してください: screen -list"
+    discord_send "$CH_NOTIFY" "再起動 結果不明 — 実行してください: screen -list"
 fi
 
-log "=== 週次再起動 完了 ==="
+log "=== 再起動 完了 ==="

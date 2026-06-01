@@ -45,13 +45,17 @@ UptimeRobot / BetterStack 等から `/health` を外部ping。
 
 ---
 
-## 4. 週次再起動（オプション）
+## 4. 定期コールドリスタート（推奨）
 
-`scripts/weekly_restart.sh` が日曜03:10にコールドリスタート。
-デフォルトはコメントアウト。1〜2週間問題なく回せたら有効化推奨。
+`scripts/restart.sh` が handoff を残してからコールドリスタートする。会話コンテキストが
+肥大して重く/不安定になるのを防ぐため、**毎日 03:00 の nightly を推奨**（24/7 運用なら
+ほぼ必須）。スケジュールは cron 側で決める。
 
 ```cron
-10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/weekly_restart.sh >> /tmp/weekly_restart.log 2>&1
+# 推奨: 毎日 03:00
+0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
+# 週1で十分なら（日曜 03:10）:
+# 10 3 * * 0 /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 ```
 
 ---
@@ -311,7 +315,7 @@ free -h                    # メモリ残量
 VPS の RAM が 1GB 程度だと長時間 Claude session が肥大化して落ちることがある。
 
 対処:
-- 週次再起動（`scripts/weekly_restart.sh`）を有効化
+- 定期コールドリスタート（`scripts/restart.sh`、推奨は毎日 03:00）を有効化
 - swap を作る:
   ```bash
   sudo fallocate -l 2G /swapfile
