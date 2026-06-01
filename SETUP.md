@@ -90,76 +90,82 @@ nc -zv xxx.xxx.xxx.xxx 22
 
 他 VPS [Hetzner / Vultr / DigitalOcean] では「Firewall」「Security Group」 等の名前で同等機能、 同じく SSH [22] 許可を確認する。
 
-### 0-2. ダウンロードした key.pem を使って SSH 接続
+### 0-2. VPS に入る（SSH 接続 / シリアルコンソール）
 
-手元 PC で作業します。 環境を最初に決める:
+VPS に入る方法は 2 つあります。**普段使いは A の SSH**、**SSH がどうしても通らない
+時の緊急口が B のシリアルコンソール**です。
 
-| 環境 | 使う shell | 利点 | 欠点 |
-|---|---|---|---|
-| **Mac / Linux ネイティブ** | bash / zsh | このテンプレのコマンドそのまま動く | — |
-| **Windows + WSL2 (Ubuntu)** | bash | このテンプレのコマンドそのまま動く、 開発体験も Linux と同等 | WSL 経由のパス変換 [`/mnt/c/Users/...`] を最初だけ覚える |
-| **Windows PowerShell native** | PowerShell | WSL 入れずに動く | `chmod` 等の Linux コマンドが無い、 別構文 [`icacls`] が必要、 後の手順でも WSL or 別ターミナル必須になる場面あり |
+- **A. SSH 接続**（手元 PC のターミナルから）… 以降の作業はこれが基本
+- **B. シリアルコンソール**（Xserver パネルのブラウザ画面）… SSH が `Connection timed out`
+  / `Permission denied` で入れない時や、SSH 設定をミスって締め出された時の復旧用（§0-2-4 参照）
 
-> 💡 **Windows なら WSL 推奨**、 後の手順 [B. Claude Code の bun install / cron セットアップ等] も bash 前提。 「とりあえず PowerShell」 で進めると後でハマる。 WSL2 + Ubuntu インストールは Microsoft Store から 5 分で済む。
->
-> 既に PowerShell で進めてしまった場合の救済手順は §0-2-1 末尾参照。
+#### A. SSH で入る場合：手元 PC の環境を決める
 
-#### 0-2-1. key.pem を `~/.ssh/` に配置 + 権限絞る
+下の表で**自分の環境の行**を見て、以降は各コマンドブロックの **「▶ この環境」ラベルが
+付いた行だけ**をコピペすればいいようにしてあります。
 
-ダウンロードした秘密鍵ファイル（VPS により名前が違う、 `key.pem` / `xserver-vps-xxxxx.pem` 等）はブラウザの Downloads フォルダにある想定。 以下を実行して `~/.ssh/` に置き、 SSH が要求する権限まで絞ります（権限が緩いと `ssh` コマンドが拒否する）。
+| 環境 | 使う shell | このテンプレでの扱い |
+|---|---|---|
+| **Windows PowerShell（標準）** | PowerShell | WSL なしでそのまま使える。鍵の権限設定だけ `icacls`（Linux と別構文）。**最も多いパターン**として各コマンドに PowerShell 版を併記 |
+| **Windows + WSL2 (Ubuntu)** | bash | テンプレのコマンドがそのまま動く。パスは `/mnt/c/Users/...` 経由 |
+| **Mac / Linux ネイティブ** | bash / zsh | テンプレのコマンドがそのまま動く |
 
-##### まずファイル名を確認
+> 💡 Windows は **PowerShell のままでも最後まで通せます**（SSH で VPS に入った後の作業は
+> 全部 VPS 上の bash で動くため、手元が PowerShell でも問題ない）。WSL を入れると手元 PC 側の
+> ファイル操作も bash で統一できて楽、というだけの差です。お好みで。
 
-実際にダウンロードされたファイル名を確認 [VPS 側で名前は様々]:
+#### 0-2-1. key.pem を `~/.ssh/` に配置 + 権限を絞る
 
-```bash
-# WSL [Windows + Ubuntu] の場合
-ls /mnt/c/Users/$USER/Downloads/*.pem 2>/dev/null
+ダウンロードした秘密鍵（`key.pem` / `xserver-vps-xxxxx.pem` 等、VPS により名前が違う）は
+ブラウザの Downloads にある想定。`~/.ssh/` に置いて、SSH が要求する権限まで絞ります
+（権限が緩いと `ssh` が鍵を拒否する）。**自分の環境のブロックだけ**実行してください。
+`<実ファイル名>` は最初のコマンドで表示された実際の名前に置き換えます。
 
-# Mac / Linux ネイティブの場合
-ls ~/Downloads/*.pem 2>/dev/null
+**▶ Windows PowerShell（標準）** — `chmod` が無いので権限設定は `icacls`
+
+```powershell
+# Downloads にある .pem の名前を確認
+Get-ChildItem $HOME\Downloads\*.pem
+
+# ~/.ssh に配置（cp 相当は Copy-Item）
+mkdir $HOME\.ssh -Force
+Copy-Item $HOME\Downloads\<実ファイル名>.pem $HOME\.ssh\my-vps.pem
+
+# chmod 600 相当: 継承を切って自分だけ読み取り権限
+icacls $HOME\.ssh\my-vps.pem /inheritance:r
+icacls $HOME\.ssh\my-vps.pem /grant:r "$($env:USERNAME):(R)"
 ```
 
-→ 表示されたフルパスをコピー、 次の手順で使う
-
-##### `~/.ssh/my-vps.pem` に配置 + 権限設定
+**▶ Windows + WSL2 (Ubuntu)** — Windows 側 Downloads は `/mnt/c` 経由
 
 ```bash
+ls /mnt/c/Users/$USER/Downloads/*.pem 2>/dev/null
+
 mkdir -p ~/.ssh
-
-# WSL の場合 [<実ファイル名> を上で確認した名前に置換]
 cp /mnt/c/Users/$USER/Downloads/<実ファイル名>.pem ~/.ssh/my-vps.pem
-
-# Mac / Linux ネイティブの場合
-# cp ~/Downloads/<実ファイル名>.pem ~/.ssh/my-vps.pem
-
 chmod 600 ~/.ssh/my-vps.pem
 ```
 
-> 💡 **`mv` じゃなく `cp` を使う**: 秘密鍵は VPS 側で再ダウンロード不可、 元 file を残しておくとバックアップになる。 後で別端末からも接続したい時にもこの元 file が要る。
->
-> 💡 ファイル名は `~/.ssh/my-vps.pem` のように分かりやすい名前で置くと後で混乱しない。 複数 VPS 持ちなら `~/.ssh/xserver-tokyo.pem` 等で識別する。
+**▶ Mac / Linux ネイティブ**
 
-##### Windows PowerShell native の救済 [WSL 使えない / 使いたくない場合]
+```bash
+ls ~/Downloads/*.pem 2>/dev/null
 
-PowerShell には `chmod` が無いので、 SSH 鍵の権限設定は `icacls` を使う:
-
-```powershell
-# Move-Item は PowerShell でも動く、 mv alias でも OK
-Move-Item ~/Downloads/key.pem ~/.ssh/my-vps.pem
-
-# chmod 600 相当: 継承を切って自分だけ読み取り権限
-$keyPath = "$HOME\.ssh\my-vps.pem"
-icacls $keyPath /inheritance:r
-icacls $keyPath /grant:r "$($env:USERNAME):(R)"
-
-# SSH 接続テスト
-ssh -i $HOME\.ssh\my-vps.pem root@xxx.xxx.xxx.xxx
+mkdir -p ~/.ssh
+cp ~/Downloads/<実ファイル名>.pem ~/.ssh/my-vps.pem
+chmod 600 ~/.ssh/my-vps.pem
 ```
 
-> ⚠️ ただし **後の手順 [B. Claude Code install、 §A の apt 系、 cron 系] は bash 前提**、 PowerShell native だと詰まる。 SSH で VPS 側に入った後は VPS 上で bash が動くので OK だが、 「手元 PC 側で」 何か叩く時は WSL に切り替えるのが楽。
+> 💡 **`mv` / `Move-Item` ではなく `cp` / `Copy-Item`**: 秘密鍵は VPS 側で再ダウンロード
+> 不可なので、元ファイルをバックアップとして残す。別端末から繋ぎたい時にも元が要る。
+>
+> 💡 置き場所は `~/.ssh/my-vps.pem` のように分かりやすい名前で。複数 VPS 持ちなら
+> `~/.ssh/xserver-tokyo.pem` 等で識別する。
 
 #### 0-2-2. 初回 SSH ログイン
+
+`xxx.xxx.xxx.xxx` を VPS の IP に置き換えて実行。**▶ PowerShell / WSL / Mac / Linux
+すべて同じコマンド**です（`ssh` は Windows 10/11 に標準搭載）。
 
 ```bash
 ssh -i ~/.ssh/my-vps.pem root@xxx.xxx.xxx.xxx
@@ -171,7 +177,22 @@ ssh -i ~/.ssh/my-vps.pem root@xxx.xxx.xxx.xxx
 
 #### 0-2-3.（毎回打つのを楽にする）SSH config にエイリアス登録
 
-毎回 `-i ~/.ssh/my-vps.pem` を打つのが面倒なら以下を 1 回だけ登録:
+毎回 `-i ~/.ssh/my-vps.pem` を打つのが面倒なら 1 回だけ登録すると `ssh my-vps` で繋がります。
+`xxx.xxx.xxx.xxx` を実際の IP に置き換えて、**自分の環境のブロック**を実行:
+
+**▶ Windows PowerShell（標準）**
+
+```powershell
+@"
+Host my-vps
+    HostName xxx.xxx.xxx.xxx
+    User root
+    IdentityFile ~/.ssh/my-vps.pem
+    ServerAliveInterval 60
+"@ | Add-Content $HOME\.ssh\config
+```
+
+**▶ WSL / Mac / Linux**
 
 ```bash
 cat >> ~/.ssh/config <<'EOF'
@@ -184,9 +205,29 @@ EOF
 chmod 600 ~/.ssh/config
 ```
 
-これで `ssh my-vps` だけで接続できる。 `xxx.xxx.xxx.xxx` を実際の IP に置き換えて。
+これで `ssh my-vps` だけで接続できます。
 
-#### 0-2-4. ログイン後にパッケージ最新化
+#### 0-2-4. ［SSH が通らない時］シリアルコンソールで入る
+
+SSH が `Connection timed out` / `Permission denied (publickey)` で入れない、または §0-6 で
+SSH 設定をミスって締め出された——そんな時の確実な入口が **Xserver パネルのシリアルコンソール**
+です（ブラウザ上で VPS のターミナルが開く。鍵もパケットフィルタも不要）。
+
+1. Xserver VPS パネル → 該当サーバー → **「コンソール」**（シリアルコンソール / VNC）を開く
+2. ログインを求められたら **root** + パスワードを入力
+   - 鍵認証のみで契約して root パスワードを知らない場合は、パネルの
+     **「rootパスワード設定（パスワード再設定）」** で 1 度設定してから使う
+3. ブラウザ内ターミナルにログインできたら、SSH を塞いでいる原因を直す。例:
+   - パケットフィルタ未開放 → §0-1-2 をやり直す
+   - 鍵の権限ミス / `authorized_keys` 不整合 → §0-2-1 をやり直す
+
+> ⚠️ シリアルコンソールは **ブラウザ内なのでローカル PC からの貼り付けが効きにくい**
+> （長いコマンドの手打ちは厳しい）。あくまで「SSH を復活させるための緊急口」と割り切り、
+> 通常作業は §0-2-2 の SSH に戻ってから進めるのが楽です。
+
+#### 0-2-5. ログイン後にパッケージ最新化
+
+VPS に入れたら（SSH / シリアルコンソールどちらでも）、VPS 側で実行:
 
 ```bash
 apt update && apt upgrade -y
