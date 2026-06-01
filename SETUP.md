@@ -493,6 +493,25 @@ python3 -c "import requests, dotenv; print('deps OK')"
 
 `clone OK` と `deps OK` の両方が出れば C 完了です。
 
+### C-1. commit 前のシークレット検査を有効化（推奨）
+
+このあと自分の GitHub に push します。`.env` や `credentials.json` の値を
+うっかり commit して**公開リポジトリに秘匿情報が漏れる**のは一番怖い事故なので、
+commit 直前に自動チェックする git フックを有効化しておきます（1 回だけ）:
+
+```bash
+cd ~/secretary
+git config core.hooksPath .githooks
+```
+
+これで `git commit` のたびに `scripts/check_secrets.py` が staged 差分を検査し、
+API キー/トークンらしき文字列を見つけたら commit を中断します。手動でリポジトリ
+全体を検査するには:
+
+```bash
+python3 ~/secretary/scripts/check_secrets.py --all
+```
+
 ---
 
 ## C2. 自分の GitHub プライベートリポジトリに切替える（推奨）
