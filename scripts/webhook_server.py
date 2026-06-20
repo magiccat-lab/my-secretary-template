@@ -46,7 +46,7 @@ def discord_send(channel_id: str, message: str) -> bool:
             json={"content": message},
             timeout=10
         )
-        if r.status_code == 200:
+        if 200 <= r.status_code < 300:
             logger.info(f"Discord直接送信完了: #{channel_id}")
             return True
         logger.error(f"Discord送信エラー: {r.status_code} {r.text}")
