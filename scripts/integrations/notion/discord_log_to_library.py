@@ -70,23 +70,34 @@ def _channels() -> list[tuple[str, str]]:
 
 
 def fetch_messages(token: str, channel_id: str, cutoff: datetime) -> list[dict]:
-    """直近 cutoff 以降のメッセージを古い順で返す（最大 100 件）。"""
+    """直近 cutoff 以降のメッセージを古い順で全件返す。"""
     headers = {"Authorization": f"Bot {token}"}
-    r = requests.get(
-        f"{DISCORD_API}/channels/{channel_id}/messages?limit=100",
-        headers=headers,
-        timeout=TIMEOUT_SEC,
-    )
-    if r.status_code != 200:
-        print(f"⚠ ch {channel_id} 取得失敗: HTTP {r.status_code}", file=sys.stderr)
-        return []
-    msgs = []
-    for m in r.json():
-        ts = datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00"))
-        if ts >= cutoff:
-            msgs.append(m)
-    msgs.reverse()  # 古い順
-    return msgs
+    all_msgs = []
+    before = None
+    while True:
+        url = f"{DISCORD_API}/channels/{channel_id}/messages?limit=100"
+        if before:
+            url += f"&before={before}"
+        r = requests.get(url, headers=headers, timeout=TIMEOUT_SEC)
+        if r.status_code != 200:
+            print(f"⚠ ch {channel_id} 取得失敗: HTTP {r.status_code}", file=sys.stderr)
+            break
+        batch = r.json()
+        if not batch:
+            break
+        reached_cutoff = False
+        for m in batch:
+            ts = datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00"))
+            if ts >= cutoff:
+                all_msgs.append(m)
+            else:
+                reached_cutoff = True
+        if reached_cutoff or len(batch) < 100:
+            break
+        before = batch[-1]["id"]
+        time.sleep(0.5)
+    all_msgs.reverse()
+    return all_msgs
 
 
 def _chunk(text: str, size: int) -> list[str]:
@@ -154,7 +165,7 @@ def main() -> int:
         for m in msgs:
             ts = datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00")).astimezone(JST)
             author = m.get("author", {}).get("username", "?")
-            content = (m.get("content") or "").replace("\n", " ")
+            content = m.get("content") or ""
             if not content:
                 content = "[添付/埋め込みのみ]"
             lines.append(f"[{ts:%H:%M}] {author}: {content}")

@@ -86,5 +86,8 @@ if [ -f "$SECRETARY_DIR/scripts/queue_watcher.sh" ]; then
     bash "$SECRETARY_DIR/scripts/queue_watcher.sh" &
 fi
 
+# 必須 cron の自動登録（未登録分のみ追加）
+bash "$SECRETARY_DIR/scripts/install_crons.sh" 2>/dev/null || true
+
 echo "secretary started (session: $SECRETARY_SESSION)"
 screen -list | grep secretary
