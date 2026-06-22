@@ -1,26 +1,38 @@
 #!/usr/bin/env python3
 """先輩待ちタスクリマインダー - 未完了タスクがあれば通知"""
 import json
-import requests
 import os
+import sys
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-TASKS_FILE = os.getenv('PENDING_TASKS_PATH', os.path.expanduser('~/secretary/data/pending_tasks.json'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
 WEBHOOK_PORT = os.getenv('WEBHOOK_PORT', '8781')
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN', '')
 WEBHOOK = f'http://localhost:{WEBHOOK_PORT}/remind'
 CHANNEL_ID = os.getenv('DISCORD_CHANNEL_RANDOM', '')
 
+
+def _resolve_tasks_file() -> str:
+    try:
+        from config import get_tasks_path
+        return get_tasks_path()
+    except Exception:
+        return os.getenv('PENDING_TASKS_PATH', os.path.expanduser('~/secretary/data/pending_tasks.json'))
+
+
 def main():
-    if not os.path.exists(TASKS_FILE):
+    tasks_file = _resolve_tasks_file()
+    if not os.path.exists(tasks_file):
         return
 
-    with open(TASKS_FILE) as f:
+    with open(tasks_file) as f:
         data = json.load(f)
 
-    # primary/secondaryセクション両方から集める（旧形式tasksも互換）
     all_tasks = []
     if 'tasks' in data:
         all_tasks = [t for t in data['tasks'] if not t.get('done')]

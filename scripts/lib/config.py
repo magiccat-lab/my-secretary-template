@@ -23,8 +23,21 @@ def _load_raw_config() -> dict[str, Any]:
     try:
         import yaml
     except ImportError:
-        return {}
-    return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        raise RuntimeError(
+            f"secretaries.yaml が存在しますが PyYAML がインストールされていません。"
+            f" pip install PyYAML>=6.0 を実行してください。"
+        )
+
+    text = config_path.read_text(encoding="utf-8")
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise RuntimeError(f"secretaries.yaml のパースに失敗: {e}")
+
+    if not isinstance(data, dict):
+        raise RuntimeError(f"secretaries.yaml のトップレベルが dict ではありません: {type(data)}")
+
+    return data
 
 
 def _resolve_env(env_name: str, default: str = "") -> str:
@@ -92,17 +105,18 @@ def resolve_secretary(
 ) -> dict[str, Any]:
     """秘書を解決する。
 
-    優先順: SECRETARY_ID env > 引数 secretary_id > channel ルーティング > default
+    優先順: 引数 secretary_id > SECRETARY_ID env > channel ルーティング > default
+    CLI 明示引数が最優先（env が残っていても上書きされない）。
     """
     config = load_config()
     secs = load_secretaries()
 
+    if secretary_id and secretary_id in secs:
+        return secs[secretary_id]
+
     env_id = os.environ.get("SECRETARY_ID", "")
     if env_id and env_id in secs:
         return secs[env_id]
-
-    if secretary_id and secretary_id in secs:
-        return secs[secretary_id]
 
     if channel_id:
         for sec_id, sec in secs.items():

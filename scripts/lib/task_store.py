@@ -37,19 +37,32 @@ import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
-def _resolve_json_path() -> Path:
+_DEFAULT_JSON = Path(os.path.expanduser("~/secretary/data/pending_tasks.json"))
+
+
+def _resolve_json_path(secretary_id: str | None = None) -> Path:
     """秘書別のタスクファイルパスを解決する。
 
-    優先順: PENDING_TASKS_PATH env > secretaries.yaml > デフォルト
+    secretary_id 明示指定時は config の state.tasks を使う。
+    PENDING_TASKS_PATH は1体運用のレガシー互換（secretary_id 未指定時のみ参照）。
     """
-    env_path = os.environ.get("PENDING_TASKS_PATH")
-    if env_path:
-        return Path(env_path)
+    if not secretary_id:
+        env_path = os.environ.get("PENDING_TASKS_PATH")
+        if env_path:
+            p = Path(env_path)
+            if not p.is_absolute():
+                sec_dir = Path(os.environ.get("SECRETARY_DIR", os.path.expanduser("~/secretary")))
+                p = sec_dir / p
+            return p
+
     try:
-        from config import get_tasks_path
-        return Path(get_tasks_path())
-    except Exception:
-        return Path(os.path.expanduser("~/secretary/data/pending_tasks.json"))
+        from .config import get_tasks_path
+    except ImportError:
+        try:
+            from config import get_tasks_path
+        except ImportError:
+            return _DEFAULT_JSON
+    return Path(get_tasks_path(secretary_id=secretary_id))
 
 
 JSON_PATH = _resolve_json_path()
@@ -217,28 +230,44 @@ def _sqlite_save_tasks(data: dict) -> None:
 # ---------- 公開 API ----------
 
 
-def load_tasks() -> dict:
+def load_tasks(secretary_id: str | None = None) -> dict:
     if _backend() == "sqlite":
         return _sqlite_load_tasks()
+    if secretary_id:
+        path = _resolve_json_path(secretary_id)
+        old_path = JSON_PATH
+        globals()["JSON_PATH"] = path
+        try:
+            return _json_load_tasks()
+        finally:
+            globals()["JSON_PATH"] = old_path
     return _json_load_tasks()
 
 
-def save_tasks(data: dict) -> None:
+def save_tasks(data: dict, secretary_id: str | None = None) -> None:
     if _backend() == "sqlite":
         _sqlite_save_tasks(data)
+    elif secretary_id:
+        path = _resolve_json_path(secretary_id)
+        old_path = JSON_PATH
+        globals()["JSON_PATH"] = path
+        try:
+            _json_save_tasks(data)
+        finally:
+            globals()["JSON_PATH"] = old_path
     else:
         _json_save_tasks(data)
 
 
 @contextlib.contextmanager
-def update_tasks() -> Iterator[dict]:
-    data = load_tasks()
+def update_tasks(secretary_id: str | None = None) -> Iterator[dict]:
+    data = load_tasks(secretary_id=secretary_id)
     try:
         yield data
     except Exception:
         raise
     else:
-        save_tasks(data)
+        save_tasks(data, secretary_id=secretary_id)
 
 
 def get_active(section: str = DEFAULT_SECTION) -> list[dict]:

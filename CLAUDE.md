@@ -13,8 +13,13 @@
 @docs/INDEX.md
 
 ### 複数秘書モード（オプション）
-`secretaries.yaml` が存在する場合、秘書ごとに異なる IDENTITY ファイルを
-読み込みます。2体目以降の秘書を追加するには:
+`secretaries.yaml` が存在する場合、秘書ごとに Discord の送信者・
+タスクストア・handoff・ジョブ担当を分離できます。single runtime
+（1つの Claude Code セッション）では送信者/保存先/ジョブの分離まで。
+人格（IDENTITY）を完全に分けるには multi runtime が必要です。
+詳細は `docs/multi-secretary.md` を参照。
+
+2体目以降の秘書を追加するには:
 1. `cp secretaries.yaml.template secretaries.yaml`
 2. `mkdir -p AGENT/secretaries/<id>/` で秘書ディレクトリを作成
 3. `cp AGENT/IDENTITY.md AGENT/secretaries/<id>/IDENTITY.md` でコピーして編集

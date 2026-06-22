@@ -19,6 +19,7 @@ app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=4)
 
 WEBHOOK_TOKEN = os.getenv("WEBHOOK_TOKEN", "")
+ALLOW_LOCAL_NO_TOKEN = os.getenv("WEBHOOK_ALLOW_LOCAL_NO_TOKEN", "") == "1"
 
 
 @app.middleware("http")
@@ -26,14 +27,16 @@ async def bearer_auth(request: Request, call_next):
     if request.url.path == "/health":
         return await call_next(request)
     if not WEBHOOK_TOKEN:
-        host = request.client.host if request.client else ""
-        if host not in ("127.0.0.1", "::1", "localhost"):
-            logger.warning("WEBHOOK_TOKEN未設定 + 外部アクセス拒否: %s", host)
-            return JSONResponse({"status": "unauthorized", "detail": "WEBHOOK_TOKEN not configured"}, status_code=401)
-    else:
-        auth = request.headers.get("authorization", "")
-        if auth != f"Bearer {WEBHOOK_TOKEN}":
-            return JSONResponse({"status": "unauthorized"}, status_code=401)
+        if ALLOW_LOCAL_NO_TOKEN:
+            return await call_next(request)
+        logger.error("WEBHOOK_TOKEN未設定。認証なしリクエスト拒否。ローカル開発は WEBHOOK_ALLOW_LOCAL_NO_TOKEN=1 で許可")
+        return JSONResponse(
+            {"status": "unauthorized", "detail": "WEBHOOK_TOKEN not configured. Set it in .env or enable WEBHOOK_ALLOW_LOCAL_NO_TOKEN=1 for local dev"},
+            status_code=401,
+        )
+    auth = request.headers.get("authorization", "")
+    if auth != f"Bearer {WEBHOOK_TOKEN}":
+        return JSONResponse({"status": "unauthorized"}, status_code=401)
     return await call_next(request)
 
 QUEUE_FILE = '/tmp/claude_queue.txt'
@@ -53,8 +56,27 @@ def _load_discord_token() -> str:
     raise RuntimeError("DISCORD_BOT_TOKEN not found")
 
 
-def discord_send(channel_id: str, message: str) -> bool:
-    """Claude を通さず定型メッセージを Discord API で直接送信"""
+def discord_send(channel_id: str, message: str, *, secretary_id: str = "") -> bool:
+    """Claude を通さず定型メッセージを Discord API で直接送信（resolver対応）"""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(SCRIPTS_DIR, 'lib'))
+        from config import get_sender_config
+        sender = get_sender_config(secretary_id=secretary_id or None)
+        if sender["kind"] == "webhook" and sender.get("webhook_url"):
+            r = http_requests.post(
+                sender["webhook_url"],
+                json={"content": message, "username": sender.get("display_name", "")},
+                timeout=10,
+            )
+            if r.status_code in (200, 204):
+                logger.info(f"Webhook送信完了: {sender.get('display_name', '')}")
+                return True
+            logger.error(f"Webhook送信エラー: {r.status_code} {r.text}")
+            return False
+    except Exception:
+        pass
+
     try:
         token = _load_discord_token()
         r = http_requests.post(
@@ -100,9 +122,16 @@ async def remind(request: Request):
     task_title = body.get("task", "")
     if not msg:
         return {"status": "error"}
-    discord_send(channel, msg)
+    secretary_id = body.get("secretary", "")
+    discord_send(channel, msg, secretary_id=secretary_id)
     if task_title:
-        tasks_file = os.path.expanduser("~/secretary/data/pending_tasks.json")
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(SCRIPTS_DIR, 'lib'))
+            from config import get_tasks_path
+            tasks_file = get_tasks_path(secretary_id=secretary_id or None)
+        except Exception:
+            tasks_file = os.path.expanduser("~/secretary/data/pending_tasks.json")
         try:
             if os.path.exists(tasks_file):
                 with open(tasks_file) as f:
