@@ -7,12 +7,18 @@ export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"
 
 SECRETARY_DIR="$HOME/secretary"
 
+# .env から WEBHOOK_PORT を読む（デフォルト 8781）
+if [ -f "$SECRETARY_DIR/.env" ]; then
+  WEBHOOK_PORT=$(grep '^WEBHOOK_PORT=' "$SECRETARY_DIR/.env" | cut -d= -f2)
+fi
+WEBHOOK_PORT="${WEBHOOK_PORT:-8781}"
+
 # 既存のセッション / webhook を落とす
 screen -S secretary -X quit 2>/dev/null
 pkill -f webhook_server.py 2>/dev/null
 
 # webhook のポートを解放
-lsof -ti:8781 2>/dev/null | xargs kill -9 2>/dev/null
+lsof -ti:"$WEBHOOK_PORT" 2>/dev/null | xargs kill -9 2>/dev/null
 sleep 1
 
 # Claude Code を screen セッションで起動（Discord プラグイン付き）

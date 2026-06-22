@@ -13,9 +13,16 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"
 }
 
+WEBHOOK_PORT="${WEBHOOK_PORT:-8781}"
+
 notify() {
-    curl -s -X POST http://localhost:8781/remind \
+    local auth_header=""
+    if [ -n "$WEBHOOK_TOKEN" ]; then
+        auth_header="-H \"Authorization: Bearer $WEBHOOK_TOKEN\""
+    fi
+    eval curl -s -X POST "http://localhost:${WEBHOOK_PORT}/remind" \
         -H "Content-Type: application/json" \
+        $auth_header \
         -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}" > /dev/null 2>&1
 }
 
@@ -65,7 +72,7 @@ errors=""
 
 # webhookサーバー確認
 sleep 3
-response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8781/health)
+response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:${WEBHOOK_PORT}/health")
 if [ "$response" != "200" ]; then
     errors="${errors}webhookサーバーが応答しない\n"
     log "ERROR: webhook応答なし (${response})"

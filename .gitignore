@@ -1,5 +1,6 @@
 .env
 .env.bak*
+secretaries.yaml
 integrations/*/token.json
 integrations/*/credentials.json
 data/secrets/

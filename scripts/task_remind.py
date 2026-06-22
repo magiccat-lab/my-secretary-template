@@ -7,8 +7,10 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-TASKS_FILE = os.path.expanduser('~/secretary/data/pending_tasks.json')
-WEBHOOK = 'http://localhost:8781/remind'
+TASKS_FILE = os.getenv('PENDING_TASKS_PATH', os.path.expanduser('~/secretary/data/pending_tasks.json'))
+WEBHOOK_PORT = os.getenv('WEBHOOK_PORT', '8781')
+WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN', '')
+WEBHOOK = f'http://localhost:{WEBHOOK_PORT}/remind'
 CHANNEL_ID = os.getenv('DISCORD_CHANNEL_RANDOM', '')
 
 def main():
@@ -38,10 +40,13 @@ def main():
         lines.append(f'・{t["title"]}')
 
     message = '\n'.join(lines)
+    headers = {}
+    if WEBHOOK_TOKEN:
+        headers['Authorization'] = f'Bearer {WEBHOOK_TOKEN}'
     requests.post(WEBHOOK, json={
         'channel_id': CHANNEL_ID,
         'message': message
-    }, timeout=10)
+    }, headers=headers, timeout=10)
 
 if __name__ == '__main__':
     main()

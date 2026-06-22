@@ -22,6 +22,8 @@
 | 「タスクどう保存してる」「スマホからタスク見たい」「スプシと同期」 | `docs/tasks.md` | pending_tasks.json の構造と Google Sheets 双方向同期 |
 | 「Notion と繋ぎたい」「タスク Notion で見たい」「Wishlist 追加して」「Notion 同期失敗」 | `docs/notion.md` | Notion DB との同期・Wishlist 追加・トラブルシュート |
 
+| 「秘書をもう1体追加したい」「チャンネルごとに分けたい」「2体目のセットアップ」 | `docs/multi-secretary.md` | 複数秘書モードの設定・ルーティング・ジョブ割り当て |
+
 ## Phase 1 拡張 docs [初回セットアップ後の reference]
 
 `SETUP.md` の A-L 章で動かしたあと、 各機能を深掘りするときに参照する。

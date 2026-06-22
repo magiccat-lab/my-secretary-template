@@ -12,6 +12,14 @@
 @AGENT/JOBS.md
 @docs/INDEX.md
 
+### 複数秘書モード（オプション）
+`secretaries.yaml` が存在する場合、秘書ごとに異なる IDENTITY ファイルを
+読み込みます。2体目以降の秘書を追加するには:
+1. `cp secretaries.yaml.template secretaries.yaml`
+2. `mkdir -p AGENT/secretaries/<id>/` で秘書ディレクトリを作成
+3. `cp AGENT/IDENTITY.md AGENT/secretaries/<id>/IDENTITY.md` でコピーして編集
+4. `secretaries.yaml` に2体目のエントリを追加
+
 ## リポジトリ
 
 - ローカル: `~/secretary/`

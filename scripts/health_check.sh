@@ -9,7 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../.env"
 
 LOG=/tmp/health_check.log
-WEBHOOK_URL="http://localhost:8781/health"
+WEBHOOK_PORT="${WEBHOOK_PORT:-8781}"
+WEBHOOK_URL="http://localhost:${WEBHOOK_PORT}/health"
 DISCORD_CHANNEL="${DISCORD_CHANNEL_RANDOM}"
 MAX_FAILURES=2
 FAILURE_FILE=/tmp/health_check_failures.txt
@@ -20,8 +21,13 @@ log() {
 
 # webhook経由でDiscord通知
 notify_discord() {
-    curl -s -X POST http://localhost:8781/remind \
+    local auth_header=""
+    if [ -n "$WEBHOOK_TOKEN" ]; then
+        auth_header="-H \"Authorization: Bearer $WEBHOOK_TOKEN\""
+    fi
+    eval curl -s -X POST "http://localhost:${WEBHOOK_PORT}/remind" \
         -H "Content-Type: application/json" \
+        $auth_header \
         -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}" > /dev/null 2>&1
 }
 

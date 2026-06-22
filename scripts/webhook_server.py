@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 import base64
 import logging
 import asyncio
@@ -16,6 +17,24 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=4)
+
+WEBHOOK_TOKEN = os.getenv("WEBHOOK_TOKEN", "")
+
+
+@app.middleware("http")
+async def bearer_auth(request: Request, call_next):
+    if request.url.path == "/health":
+        return await call_next(request)
+    if not WEBHOOK_TOKEN:
+        host = request.client.host if request.client else ""
+        if host not in ("127.0.0.1", "::1", "localhost"):
+            logger.warning("WEBHOOK_TOKEN未設定 + 外部アクセス拒否: %s", host)
+            return JSONResponse({"status": "unauthorized", "detail": "WEBHOOK_TOKEN not configured"}, status_code=401)
+    else:
+        auth = request.headers.get("authorization", "")
+        if auth != f"Bearer {WEBHOOK_TOKEN}":
+            return JSONResponse({"status": "unauthorized"}, status_code=401)
+    return await call_next(request)
 
 QUEUE_FILE = '/tmp/claude_queue.txt'
 DISCORD_ENV = os.path.expanduser("~/.claude/channels/discord/.env")
@@ -141,4 +160,5 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8781)
+    port = int(os.getenv("WEBHOOK_PORT", "8781"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
