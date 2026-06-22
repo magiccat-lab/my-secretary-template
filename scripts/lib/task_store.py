@@ -37,12 +37,22 @@ import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
-JSON_PATH = Path(
-    os.environ.get(
-        "PENDING_TASKS_PATH",
-        os.path.expanduser("~/secretary/data/pending_tasks.json"),
-    )
-)
+def _resolve_json_path() -> Path:
+    """秘書別のタスクファイルパスを解決する。
+
+    優先順: PENDING_TASKS_PATH env > secretaries.yaml > デフォルト
+    """
+    env_path = os.environ.get("PENDING_TASKS_PATH")
+    if env_path:
+        return Path(env_path)
+    try:
+        from config import get_tasks_path
+        return Path(get_tasks_path())
+    except Exception:
+        return Path(os.path.expanduser("~/secretary/data/pending_tasks.json"))
+
+
+JSON_PATH = _resolve_json_path()
 SQLITE_PATH = Path(
     os.environ.get(
         "PENDING_TASKS_DB",

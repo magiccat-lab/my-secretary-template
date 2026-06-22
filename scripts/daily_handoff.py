@@ -30,12 +30,36 @@ load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 from scripts.lib.jst import JST  # noqa: E402
 from scripts.lib.task_store import load_tasks  # noqa: E402
 
-HANDOFF_PATH = os.path.expanduser("~/secretary/data/handoff.md")
+def _resolve_handoff_path() -> str:
+    """秘書別の handoff パスを解決する。"""
+    try:
+        from scripts.lib.config import resolve_secretary, _secretary_dir
+        sec = resolve_secretary()
+        state = sec.get("state", {})
+        rel = state.get("handoff", "data/handoff.md")
+        return str(_secretary_dir() / rel)
+    except Exception:
+        return os.path.expanduser("~/secretary/data/handoff.md")
+
+
+HANDOFF_PATH = _resolve_handoff_path()
 
 # スキャン対象のチャンネル。必要に応じて追加・削除（環境変数 -> チャンネルID）
-CHANNELS = {name: os.getenv(env_key, "") for name, env_key in [
-    ("random", "DISCORD_CHANNEL_RANDOM"),
-]}
+def _resolve_channels() -> dict[str, str]:
+    """秘書の allowlist からスキャン対象チャンネルを構築する。"""
+    try:
+        from scripts.lib.config import resolve_secretary
+        sec = resolve_secretary()
+        channels = sec.get("channels", {})
+        allowlist = channels.get("allowlist_envs", [])
+        if allowlist:
+            return {env: os.getenv(env, "") for env in allowlist}
+    except Exception:
+        pass
+    return {"random": os.getenv("DISCORD_CHANNEL_RANDOM", "")}
+
+
+CHANNELS = _resolve_channels()
 
 
 def _discord_token() -> str | None:
