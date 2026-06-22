@@ -86,16 +86,18 @@ def _backend() -> str:
 # ---------- JSON バックエンド ----------
 
 
-def _ensure_json_exists() -> None:
-    if not JSON_PATH.exists():
-        JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-        JSON_PATH.write_text(json.dumps({DEFAULT_SECTION: []}, ensure_ascii=False, indent=2))
+def _ensure_json_exists(path: Path | None = None) -> Path:
+    p = path or JSON_PATH
+    if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({DEFAULT_SECTION: []}, ensure_ascii=False, indent=2))
+    return p
 
 
 @contextlib.contextmanager
-def _locked_json(mode: str) -> Iterator:
-    _ensure_json_exists()
-    f = open(JSON_PATH, mode, encoding="utf-8")
+def _locked_json(mode: str, path: Path | None = None) -> Iterator:
+    p = _ensure_json_exists(path)
+    f = open(p, mode, encoding="utf-8")
     try:
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         yield f
@@ -106,8 +108,8 @@ def _locked_json(mode: str) -> Iterator:
             f.close()
 
 
-def _json_load_tasks() -> dict:
-    with _locked_json("r") as f:
+def _json_load_tasks(path: Path | None = None) -> dict:
+    with _locked_json("r", path) as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:
@@ -121,11 +123,12 @@ def _json_load_tasks() -> dict:
     return data
 
 
-def _json_save_tasks(data: dict) -> None:
-    tmp = JSON_PATH.with_suffix(".tmp")
-    with _locked_json("r+") as _:
+def _json_save_tasks(data: dict, path: Path | None = None) -> None:
+    p = path or JSON_PATH
+    tmp = p.with_suffix(".tmp")
+    with _locked_json("r+", path) as _:
         tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-        tmp.replace(JSON_PATH)
+        tmp.replace(p)
 
 
 # ---------- SQLite バックエンド ----------
@@ -233,30 +236,16 @@ def _sqlite_save_tasks(data: dict) -> None:
 def load_tasks(secretary_id: str | None = None) -> dict:
     if _backend() == "sqlite":
         return _sqlite_load_tasks()
-    if secretary_id:
-        path = _resolve_json_path(secretary_id)
-        old_path = JSON_PATH
-        globals()["JSON_PATH"] = path
-        try:
-            return _json_load_tasks()
-        finally:
-            globals()["JSON_PATH"] = old_path
-    return _json_load_tasks()
+    path = _resolve_json_path(secretary_id) if secretary_id else None
+    return _json_load_tasks(path)
 
 
 def save_tasks(data: dict, secretary_id: str | None = None) -> None:
     if _backend() == "sqlite":
         _sqlite_save_tasks(data)
-    elif secretary_id:
-        path = _resolve_json_path(secretary_id)
-        old_path = JSON_PATH
-        globals()["JSON_PATH"] = path
-        try:
-            _json_save_tasks(data)
-        finally:
-            globals()["JSON_PATH"] = old_path
-    else:
-        _json_save_tasks(data)
+        return
+    path = _resolve_json_path(secretary_id) if secretary_id else None
+    _json_save_tasks(data, path)
 
 
 @contextlib.contextmanager

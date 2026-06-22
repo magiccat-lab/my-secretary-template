@@ -155,10 +155,18 @@ def get_secretary_for_job(job_name: str, job_tags: list[str] | None = None) -> d
 
 
 def get_tasks_path(secretary_id: str | None = None) -> str:
-    """秘書のタスクファイルパスを返す。"""
-    env_path = os.environ.get("PENDING_TASKS_PATH")
-    if env_path:
-        return env_path
+    """秘書のタスクファイルパスを返す。
+
+    secretary_id 指定時は config の state.tasks を使う（PENDING_TASKS_PATH は無視）。
+    未指定時のみ PENDING_TASKS_PATH をレガシー互換として参照。
+    """
+    if not secretary_id:
+        env_path = os.environ.get("PENDING_TASKS_PATH")
+        if env_path:
+            p = Path(env_path)
+            if not p.is_absolute():
+                p = _secretary_dir() / p
+            return str(p)
     sec = resolve_secretary(secretary_id=secretary_id)
     state = sec.get("state", {})
     rel = state.get("tasks", "data/pending_tasks.json")

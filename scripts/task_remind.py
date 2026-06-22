@@ -55,10 +55,14 @@ def main():
     headers = {}
     if WEBHOOK_TOKEN:
         headers['Authorization'] = f'Bearer {WEBHOOK_TOKEN}'
-    requests.post(WEBHOOK, json={
+    payload = {
         'channel_id': CHANNEL_ID,
-        'message': message
-    }, headers=headers, timeout=10)
+        'message': message,
+    }
+    secretary_id = os.environ.get('SECRETARY_ID', '')
+    if secretary_id:
+        payload['secretary'] = secretary_id
+    requests.post(WEBHOOK, json=payload, headers=headers, timeout=10)
 
 if __name__ == '__main__':
     main()

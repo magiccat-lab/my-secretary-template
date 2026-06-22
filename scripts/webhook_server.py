@@ -123,6 +123,15 @@ async def remind(request: Request):
     if not msg:
         return {"status": "error"}
     secretary_id = body.get("secretary", "")
+    if not secretary_id:
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(SCRIPTS_DIR, 'lib'))
+            from config import resolve_secretary
+            sec = resolve_secretary(channel_id=str(channel))
+            secretary_id = sec.get("id", "")
+        except Exception:
+            pass
     discord_send(channel, msg, secretary_id=secretary_id)
     if task_title:
         try:
