@@ -21,14 +21,13 @@ log() {
 
 # webhook経由でDiscord通知
 notify_discord() {
-    local auth_header=""
+    local args=(-s -X POST "http://localhost:${WEBHOOK_PORT}/remind"
+                -H "Content-Type: application/json"
+                -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}")
     if [ -n "$WEBHOOK_TOKEN" ]; then
-        auth_header="-H \"Authorization: Bearer $WEBHOOK_TOKEN\""
+        args+=(-H "Authorization: Bearer $WEBHOOK_TOKEN")
     fi
-    eval curl -s -X POST "http://localhost:${WEBHOOK_PORT}/remind" \
-        -H "Content-Type: application/json" \
-        $auth_header \
-        -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}" > /dev/null 2>&1
+    curl "${args[@]}" > /dev/null 2>&1
 }
 
 # webhook死亡時のフォールバック: Discord APIに直接送信
