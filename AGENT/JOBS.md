@@ -10,12 +10,7 @@
 
 ---
 
-## コアジョブ（テンプレートに同梱）
-
-### タスクリマインダー
-- スクリプト: `scripts/task_remind.py`
-- Cron: `30 6,22 * * *`（1日2回 — 好みで調整）
-- `data/pending_tasks.json` をスキャンして未完了分を `DISCORD_CHANNEL_RANDOM` に投稿。
+## コアジョブ（テンプレートに同梱・`install_crons.sh` で一括登録）
 
 ### 死活監視
 - スクリプト: `scripts/health_check.sh`
@@ -40,6 +35,16 @@
   キュー詰まり）を検出し、`screen -X stuff` で適切なキーを送って自動復帰。`health_check.sh`
   が拾う「落ちた」と相補。`WATCHDOG_DRY_RUN=1` で送信せず検出のみ。
 - 24h で 8 回超 fire したらループとみなし停止 + 通知（手動確認を促す）。
+
+---
+
+## 任意ジョブ（好みで追加）
+
+### タスクリマインダー
+- スクリプト: `scripts/task_remind.py`
+- Cron: `30 6,22 * * *`（1日2回 — 好みで調整）
+- `data/pending_tasks.json` をスキャンして未完了分を `DISCORD_CHANNEL_RANDOM` に投稿。
+- コアには含まれていません。使いたい場合は `crontab -e` で手動追加。
 
 ---
 

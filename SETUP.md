@@ -1042,10 +1042,12 @@ python3 ~/secretary/scripts/integrations/notion/sync_pending_to_notion.py
 `sync 完了: created=N / updated=M / failed=0` が出れば成功。
 Notion の `Tasks` DB にローカルタスクが反映されているはずです。
 
-### G2-9. 自動同期の cron を追加
+### G2-9. 自動ログ送信の cron
 
-§I のコア cron で Notion 同期も含めて一括登録します。ここでは手動で足す必要はありません。
-（個別に足したい場合は `docs/cron.md` 参照。）
+§I のコア cron に `discord_log_to_library.py` が含まれています。
+Discord のログが毎日 23:50 に Notion Log Library へ自動送信されます。
+タスク同期（`sync_pending_to_notion.py`）は手動実行のみです。自動化したい場合は
+`docs/cron.md` を参照して cron を追加してください。
 
 ### G2-10. よくあるエラー
 
@@ -1283,20 +1285,15 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 
 #### 5. コア cron を登録する（必須）
 
-秘書を安定運用するための **必須 cron 4 本**をまとめて登録します。`nightly restart`
-（毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・不安定になるのを防ぐ
-標準装備で、handoff 生成 → コールドリスタートを内包します。通常シェル（screen の外）で、
-まるごとコピペして実行:
+秘書を安定運用するための **必須 cron 4 本**をまとめて登録します。
+`start_server.sh` が内部で `install_crons.sh` を呼ぶので、既に登録済みなら
+重複しません。手動で確認・登録したい場合は以下を実行:
 
 ```bash
-(crontab -l 2>/dev/null; cat <<EOF
-*/5 * * * * /bin/bash $HOME/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
-*/2 * * * * /usr/bin/python3 $HOME/secretary/scripts/session_watchdog.py >> /tmp/session_watchdog.log 2>&1
-0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
-50 23 * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
-EOF
-) | crontab -
+bash ~/secretary/scripts/install_crons.sh
 ```
+
+登録される 4 本:
 
 - `health_check.sh`（5 分おき）… セッションが**落ちて**いたら自動で復帰
 - `session_watchdog.py`（2 分おき）… セッションが**固まって**いたら（上限/選択肢/MCP認証/キュー詰まり）自動で復帰
@@ -1312,9 +1309,12 @@ crontab -l
 
 4 行出ていれば OK。
 
-> nightly restart は週1で十分なら、上の `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に
-> 変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、各機能を
-> 有効化するときに追加します（§G2、`docs/cron.md`）。
+> nightly restart は週1で十分なら `crontab -e` で `0 3 * * *` を `10 3 * * 0`（日曜
+> 03:10）に変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、
+> 各機能を有効化するときに追加します（§G2、`docs/cron.md`）。
+>
+> タスクリマインダー（`task_remind.py`）は任意ジョブです。必要なら `docs/cron.md` を
+> 参照して手動で追加してください。
 
 #### 6. cron の動作確認（推奨）
 
@@ -1386,16 +1386,21 @@ Discord クライアントから、先ほど設定したチャンネル（`DISCO
 
 ---
 
-## K2. 秘書を 2 体に増やす（任意）
+## K2. 秘書を 2 体に増やす（任意・experimental）
+
+> ⚠️ **この機能は experimental です。** 設定ファイルの雛形と手順は用意していますが、
+> runtime 側の対応（`secretaries.yaml` の自動読み込み、`SECRETARY_ID` による
+> 秘書切り替え、state 分離）はまだ実装されていません。現時点では手動で
+> 2 体目の人格・チャンネル・cron を構成する必要があります。
 
 1 体の秘書が安定して動いたら、2 体目を追加して役割を分けられます。
 たとえば「普段の雑談担当」と「メール監視・リサーチ専門」のように。
 
-### 仕組み
+### 仕組み（将来設計）
 
 `secretaries.yaml` で秘書ごとの設定（名前・チャンネル・ジョブ担当・データ保存先）を
-定義します。1 つの Claude Code セッション内で `SECRETARY_ID` 環境変数を切り替えて
-動作するモード（single mode）を使います。
+定義します。将来的には `SECRETARY_ID` 環境変数で切り替えて動作する single mode を
+提供予定です。現時点では手動構成になります。
 
 ### 手順
 
@@ -1407,6 +1412,9 @@ cp secretaries.yaml.template secretaries.yaml
 
 テンプレートにはサンプル構成（`haru` + `rin`）が入っています。自分の秘書名に
 書き換えてください。
+
+> `secretaries.yaml` は個人設定です。`.gitignore` に追加するか、push 前に
+> シークレットが含まれていないか確認してください。
 
 #### 2. 2 体目の人格ファイルを作成
 
@@ -1457,13 +1465,23 @@ EOF
 > Webhook は Discord のチャンネル設定 → 連携サービス → ウェブフック → 新しいウェブフック で作成。
 > アイコンと名前を 2 体目の秘書に合わせると見分けやすい。
 
-#### 5. データディレクトリを作成
+#### 5. 2 体目のチャンネルを allowlist に追加
+
+Discord plugin が 2 体目のチャンネルを認識するよう、allowlist に追加します:
+
+```bash
+python3 ~/secretary/scripts/discord_access_apply_env.py --channel "$DISCORD_CHANNEL_WORK"
+```
+
+screen にアタッチして `/reload` を実行するか、秘書を再起動してください。
+
+#### 6. データディレクトリを作成
 
 ```bash
 mkdir -p data/secretaries/<2体目の名前>
 ```
 
-#### 6. 動作確認
+#### 7. 動作確認
 
 2 体目の担当チャンネルに話しかけて返答が来れば成功。
 

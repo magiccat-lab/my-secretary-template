@@ -1,4 +1,8 @@
-# 複数秘書モード
+# 複数秘書モード（experimental）
+
+> ⚠️ この機能は experimental です。設定ファイルの雛形は用意していますが、
+> runtime 側の自動読み込み（`secretaries.yaml` → ルーティング/state分離）は
+> まだ実装されていません。現時点では手動構成になります。
 
 1体の秘書を使い慣れたら、2体目を追加して役割を分けられます。
 
@@ -82,10 +86,10 @@ mkdir -p data/secretaries/rin
 `runtime.mode: single` — 1つの Claude Code セッションが全秘書を処理。
 `SECRETARY_ID` 環境変数で「今どの秘書として動いているか」を切り替えます。
 
-cron ジョブは `--secretary <id>` 引数で担当秘書を指定:
+cron ジョブは `SECRETARY_ID` 環境変数で担当秘書を指定（将来対応予定）:
 ```
-30 6 * * * SECRETARY_ID=haru python3 ~/secretary/scripts/task_remind.py
-30 7 * * * SECRETARY_ID=rin python3 ~/secretary/scripts/task_remind.py
+SECRETARY_ID=haru python3 ~/secretary/scripts/health_check.sh
+SECRETARY_ID=rin python3 ~/secretary/scripts/health_check.sh
 ```
 
 ### multi モード（将来対応）
@@ -103,7 +107,7 @@ cron ジョブは `--secretary <id>` 引数で担当秘書を指定:
 # JOBS.md のジョブテーブル
 | トリガー | スクリプト | タグ | 動作 |
 |---------|--------|------|--------|
-| cron: 30 6,22 * * * | task_remind.py | core | タスク通知 |
+| cron: */5 * * * * | health_check.sh | core | 死活監視 |
 | cron: * * * * * | gmail_monitor.py | gmail | メール監視 |
 ```
 

@@ -70,11 +70,10 @@ tail -n 100 /tmp/health_check.log
 
 ## 6. 推奨ジョブ一覧
 
-### 最小セット（セットアップ時に必ず入れる）
+### 最小セット（セットアップ時に必ず入れる — `install_crons.sh` で一括登録）
 ```cron
 */5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 */2 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/session_watchdog.py >> /tmp/session_watchdog.log 2>&1
-30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
 0 3 * * * /bin/bash /home/YOUR_USER/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 50 23 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
 ```
@@ -82,6 +81,12 @@ tail -n 100 /tmp/health_check.log
 > まとめてやる。会話コンテキスト肥大で重く/不安定になるのを防ぐ標準装備。単独の
 > `daily_handoff.py` は restart に内包されるので別途登録は不要。週1で十分なら
 > `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に。
+
+### 任意（好みで追加）
+```cron
+# タスクリマインダー（1日2回、未完了タスクを通知）
+30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
+```
 
 ### オプション
 ```cron
