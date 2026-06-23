@@ -1283,7 +1283,7 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 
 #### 5. コア cron を登録する（必須）
 
-秘書を安定運用するための **必須 cron 5 本**をまとめて登録します。`nightly restart`
+秘書を安定運用するための **必須 cron 4 本**をまとめて登録します。`nightly restart`
 （毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・不安定になるのを防ぐ
 標準装備で、handoff 生成 → コールドリスタートを内包します。通常シェル（screen の外）で、
 まるごとコピペして実行:
@@ -1292,7 +1292,6 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 (crontab -l 2>/dev/null; cat <<EOF
 */5 * * * * /bin/bash $HOME/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 */2 * * * * /usr/bin/python3 $HOME/secretary/scripts/session_watchdog.py >> /tmp/session_watchdog.log 2>&1
-30 6,22 * * * /usr/bin/python3 $HOME/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
 0 3 * * * /bin/bash $HOME/secretary/scripts/restart.sh >> /tmp/restart.log 2>&1
 50 23 * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
 EOF
@@ -1301,7 +1300,6 @@ EOF
 
 - `health_check.sh`（5 分おき）… セッションが**落ちて**いたら自動で復帰
 - `session_watchdog.py`（2 分おき）… セッションが**固まって**いたら（上限/選択肢/MCP認証/キュー詰まり）自動で復帰
-- `task_remind.py`（毎日 06:30 / 22:30）… 未完了タスクのリマインド
 - `restart.sh`（毎日 03:00）… handoff 生成 + コールドリスタート（nightly restart）
 - `discord_log_to_library.py`（毎日 23:50）… その日の Discord ログを Notion Log Library に送る
   （Notion 未設定なら自動 skip）
@@ -1312,11 +1310,48 @@ EOF
 crontab -l
 ```
 
-3 本とも並んでいれば OK。
+4 行出ていれば OK。
 
 > nightly restart は週1で十分なら、上の `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に
 > 変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、各機能を
 > 有効化するときに追加します（§G2、`docs/cron.md`）。
+
+#### 6. cron の動作確認（推奨）
+
+登録した cron が実際に動くか、**restart** と **ログ送信** の 2 つだけ確認します。
+
+##### restart 確認
+
+nightly restart が正常に動くかテストします。手動で restart を実行して、
+秘書が復帰するまで待ちます:
+
+```bash
+bash ~/secretary/scripts/restart.sh
+```
+
+1-2 分待ってから:
+
+```bash
+screen -list                          # secretary が出れば復帰成功
+curl -s http://localhost:8781/health  # {"status":"ok",...} が返れば OK
+```
+
+Discord のメインチャンネルに話しかけて返答が来れば、restart 後の復帰は問題なし。
+
+##### ログ送信確認（Notion 連携時のみ）
+
+`discord_log_to_library.py` を手動実行して、Notion Log Library にログが送られるか
+確認します:
+
+```bash
+python3 ~/secretary/scripts/integrations/notion/discord_log_to_library.py
+```
+
+成功すると処理件数が表示されます。Notion の Log Library DB を開いて、
+今日の日付のログが入っていれば OK。
+
+> ⚠️ Notion 未設定（`NOTION_API_KEY` 空）の場合は自動 skip されるので、
+> このステップは不要です。
 
 ---
 
@@ -1348,6 +1383,92 @@ Discord クライアントから、先ほど設定したチャンネル（`DISCO
 秘書は `docs/INDEX.md` をインデックスにして、`docs/` 配下のリファレンスを
 必要なときに読む作りになっています。内部仕組みが気になったときは
 `docs/INDEX.md` から辿ってください。
+
+---
+
+## K2. 秘書を 2 体に増やす（任意）
+
+1 体の秘書が安定して動いたら、2 体目を追加して役割を分けられます。
+たとえば「普段の雑談担当」と「メール監視・リサーチ専門」のように。
+
+### 仕組み
+
+`secretaries.yaml` で秘書ごとの設定（名前・チャンネル・ジョブ担当・データ保存先）を
+定義します。1 つの Claude Code セッション内で `SECRETARY_ID` 環境変数を切り替えて
+動作するモード（single mode）を使います。
+
+### 手順
+
+#### 1. secretaries.yaml を作成
+
+```bash
+cp secretaries.yaml.template secretaries.yaml
+```
+
+テンプレートにはサンプル構成（`haru` + `rin`）が入っています。自分の秘書名に
+書き換えてください。
+
+#### 2. 2 体目の人格ファイルを作成
+
+```bash
+cp -r AGENT/secretaries/example AGENT/secretaries/<2体目の名前>
+```
+
+`AGENT/secretaries/<名前>/IDENTITY.md` を編集して 2 体目のキャラクターを定義。
+§H と同じ要領で claude.ai に手伝ってもらうのがラクです。
+
+#### 3. secretaries.yaml を編集
+
+最低限必要な設定:
+
+```yaml
+secretaries:
+  <1体目の名前>:
+    display_name: "表示名"
+    identity: "AGENT/IDENTITY.md"
+    sender:
+      kind: bot_token
+    channels:
+      default_env: DISCORD_CHANNEL_RANDOM
+    state:
+      data_dir: "data"
+
+  <2体目の名前>:
+    display_name: "表示名"
+    identity: "AGENT/secretaries/<名前>/IDENTITY.md"
+    sender:
+      kind: webhook
+      webhook_url_env: DISCORD_WEBHOOK_<NAME>
+    channels:
+      default_env: DISCORD_CHANNEL_WORK
+    state:
+      data_dir: "data/secretaries/<名前>"
+```
+
+#### 4. .env に 2 体目用の値を追加
+
+```bash
+cat >> ~/secretary/.env <<'EOF'
+DISCORD_WEBHOOK_<NAME>=https://discord.com/api/webhooks/...
+DISCORD_CHANNEL_WORK=paste_channel_id_here
+EOF
+```
+
+> Webhook は Discord のチャンネル設定 → 連携サービス → ウェブフック → 新しいウェブフック で作成。
+> アイコンと名前を 2 体目の秘書に合わせると見分けやすい。
+
+#### 5. データディレクトリを作成
+
+```bash
+mkdir -p data/secretaries/<2体目の名前>
+```
+
+#### 6. 動作確認
+
+2 体目の担当チャンネルに話しかけて返答が来れば成功。
+
+> 詳細は `docs/multi-secretary.md` を参照。cron ジョブの担当分担（`jobs.enabled_tags`）や
+> チャンネルルーティングの設定方法も記載しています。
 
 ---
 
