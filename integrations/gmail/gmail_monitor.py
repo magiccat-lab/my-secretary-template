@@ -134,6 +134,10 @@ def archive(service, mid: str) -> None:
 
 
 def main() -> None:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(_REPO_ROOT, ".env"))
+    if os.getenv("GMAIL_ENABLED", "false").lower() not in ("true", "1", "yes"):
+        return
     import time
 
     service = None

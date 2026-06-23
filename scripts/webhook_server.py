@@ -17,6 +17,20 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=4)
 
+WEBHOOK_TOKEN = os.getenv("WEBHOOK_TOKEN", "")
+
+
+async def _check_auth(request: Request) -> bool:
+    if not WEBHOOK_TOKEN:
+        return False
+    auth = request.headers.get("Authorization", "")
+    if auth == f"Bearer {WEBHOOK_TOKEN}":
+        return True
+    token_param = request.query_params.get("token", "")
+    if token_param == WEBHOOK_TOKEN:
+        return True
+    return False
+
 QUEUE_FILE = '/tmp/claude_queue.txt'
 DISCORD_ENV = os.path.expanduser("~/.claude/channels/discord/.env")
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__))
@@ -75,6 +89,9 @@ async def send_to_claude(message: str):
 @app.post("/remind")
 async def remind(request: Request):
     """リマインダー送信 + オプションでタスク追加"""
+    if WEBHOOK_TOKEN and not await _check_auth(request):
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
     import json
     body = await request.json()
     logger.info(f"リマインド受信: {body}")
@@ -106,6 +123,9 @@ async def remind(request: Request):
 @app.post("/gmail_notify")
 async def gmail_notify(request: Request):
     """新着メール通知（integrations/gmail/gmail_monitor.py から叩かれる）"""
+    if WEBHOOK_TOKEN and not await _check_auth(request):
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
     body = await request.json()
     logger.info(f"gmail: {body.get('subject', '')}")
     sender = body.get('sender', '')
@@ -143,4 +163,7 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("WEBHOOK_PORT", "8781")))
+    host = "127.0.0.1" if not WEBHOOK_TOKEN else "0.0.0.0"
+    if not WEBHOOK_TOKEN:
+        logger.warning("WEBHOOK_TOKEN 未設定 — 127.0.0.1 のみで起動します")
+    uvicorn.run(app, host=host, port=int(os.getenv("WEBHOOK_PORT", "8781")))

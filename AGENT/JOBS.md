@@ -17,16 +17,12 @@
 - Cron: `*/5 * * * *`
 - webhook / screen / claude のどれかが落ちていたら再起動。
 
-### デイリー handoff
-- スクリプト: `scripts/daily_handoff.py`
-- Cron: `0 3 * * *`（または停止前に手動実行）
-- `data/handoff.md` を書いて、次のセッションが引き継げるようにする。
-
 ### 定期コールドリスタート（推奨）
 - スクリプト: `scripts/restart.sh`
 - Cron: `0 3 * * *`（毎日 03:00 の nightly を推奨。週1なら `10 3 * * 0`）
-- handoff を残してから screen セッションをコールドスタートし直す。会話コンテキストの
+- handoff 生成 + screen セッションのコールドスタートを一括実行。会話コンテキストの
   肥大で重く/不安定になるのを防ぐ。24/7 稼働ならほぼ必須。
+- `daily_handoff.py` は `restart.sh` に内包されるため、別途 cron 登録は不要。
 
 ### セッションハング watchdog（推奨）
 - スクリプト: `scripts/session_watchdog.py`

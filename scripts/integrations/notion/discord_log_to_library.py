@@ -6,8 +6,8 @@ DISCORD_CHANNEL_EXTRA）を集めて、Notion の Log Library DB に 1 ページ
 まとめ資料・ログは md でなく Notion Log Library に集約する方針（AGENT/AGENTS.md 参照）。
 
 環境変数:
-    NOTION_TOKEN             Notion Internal Integration Secret
-    NOTION_DB_LOG_LIBRARY    Log Library DB の ID
+    NOTION_API_KEY           Notion Internal Integration Secret (NOTION_TOKEN も可)
+    NOTION_DB_LOG_LIBRARY    Log Library DB の ID (環境設定 DB 経由でも可)
     DISCORD_CHANNEL_RANDOM   主チャンネル（必須）
     DISCORD_CHANNEL_MAIL     メールチャンネル（任意）
     DISCORD_CHANNEL_EXTRA    追加チャンネル（カンマ区切り、任意）
@@ -39,8 +39,11 @@ TIMEOUT_SEC = 30
 LOOKBACK_HOURS = 24
 MAX_BLOCK_CHARS = 1900  # Notion rich_text の 2000 文字上限に余裕
 
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
-DB_ID = os.environ.get("NOTION_DB_LOG_LIBRARY", "")
+sys.path.insert(0, str(SECRETARY_HOME / "scripts"))
+from lib.notion_env import get_api_key, get_db_id
+
+NOTION_TOKEN = get_api_key()
+DB_ID = get_db_id("log_library")
 
 
 def _discord_token() -> str:
@@ -142,7 +145,7 @@ def main() -> int:
     # Notion 未設定なら何もせず正常終了（Notion 連携をしていない構成では cron が
     # 毎日エラーにならないよう skip 扱い）。
     if not NOTION_TOKEN or not DB_ID:
-        print("Notion 未設定（NOTION_TOKEN / NOTION_DB_LOG_LIBRARY）、skip")
+        print("Notion 未設定（NOTION_API_KEY / NOTION_DB_LOG_LIBRARY）、skip")
         return 0
     token = _discord_token()
     if not token:

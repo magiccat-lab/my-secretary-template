@@ -44,6 +44,8 @@ REMIND_MINUTES = 30
 
 
 def main() -> None:
+    if os.getenv("GCAL_REMIND_ENABLED", "false").lower() not in ("true", "1", "yes"):
+        return
     creds = Credentials.from_authorized_user_file(TOKEN_PATH)
     service = build("calendar", "v3", credentials=creds)
 

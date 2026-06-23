@@ -1003,10 +1003,10 @@ chmod 600 ~/secretary/.env
 追記できたか確認:
 
 ```bash
-grep -E '^NOTION_API_KEY|^SECRETARY_ENV_DB_ID' ~/secretary/.env
+grep -E '^(NOTION_API_KEY|SECRETARY_ENV_DB_ID)=' ~/secretary/.env | sed 's/=.*/=<set>/'
 ```
 
-2 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
+2 行とも `=<set>` が表示されれば OK（値はターミナルに表示しません）。
 
 > 💡 旧バージョンで `NOTION_TOKEN` を使っていた場合: スクリプトは `NOTION_API_KEY` を優先し、
 > なければ `NOTION_TOKEN` に fallback します。新規ユーザーは `NOTION_API_KEY` だけでOK。
@@ -1316,9 +1316,9 @@ crontab -l
 > タスクリマインダー（`task_remind.py`）は任意ジョブです。必要なら `docs/cron.md` を
 > 参照して手動で追加してください。
 
-#### 6. cron の動作確認（推奨）
+#### 6. cron 対象スクリプトの smoke test（推奨）
 
-登録した cron が実際に動くか、**restart** と **ログ送信** の 2 つだけ確認します。
+登録したスクリプトが手動で動くか、**restart** と **ログ送信** の 2 つだけ確認します。
 
 ##### restart 確認
 
@@ -1467,9 +1467,11 @@ EOF
 
 #### 5. 2 体目のチャンネルを allowlist に追加
 
-Discord plugin が 2 体目のチャンネルを認識するよう、allowlist に追加します:
+Discord plugin が 2 体目のチャンネルを認識するよう、allowlist に追加します。
+まず追加した `.env` を読み込んでから実行:
 
 ```bash
+set -a; . ~/secretary/.env; set +a
 python3 ~/secretary/scripts/discord_access_apply_env.py --channel "$DISCORD_CHANNEL_WORK"
 ```
 
@@ -1481,9 +1483,14 @@ screen にアタッチして `/reload` を実行するか、秘書を再起動�
 mkdir -p data/secretaries/<2体目の名前>
 ```
 
-#### 7. 動作確認
+#### 7. 確認
 
-2 体目の担当チャンネルに話しかけて返答が来れば成功。
+ここまでで設定ファイルと allowlist の準備は完了です。
+
+> ⚠️ 現時点では runtime が `secretaries.yaml` を自動で読まないため、
+> 2 体目への自動ルーティングはまだ動きません。1 体目の秘書が 2 体目の
+> チャンネルにも応答する形になります。完全な分離は将来の runtime 対応後に
+> 有効になります。
 
 > 詳細は `docs/multi-secretary.md` を参照。cron ジョブの担当分担（`jobs.enabled_tags`）や
 > チャンネルルーティングの設定方法も記載しています。

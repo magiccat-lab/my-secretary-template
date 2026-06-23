@@ -26,17 +26,13 @@
 
 ## 2. 登録
 
-ユーザーに `crontab -e` を打ってもらい、エージェントは追加すべき行を
-コードブロックで提示する。または以下を生成して `crontab` コマンドで一括
-登録:
+コア cron は `install_crons.sh` で一括登録（重複排除あり）:
 
 ```bash
-( crontab -l 2>/dev/null; cat <<'EOF'
-*/5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
-30 6,22 * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/task_remind.py >> /tmp/task_remind.log 2>&1
-EOF
-) | crontab -
+bash ~/secretary/scripts/install_crons.sh
 ```
+
+任意ジョブを追加する場合は `crontab -e` で手動追加。
 
 ---
 

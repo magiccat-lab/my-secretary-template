@@ -22,7 +22,7 @@
 
 ## 2. 認証
 
-- **Internal Integration Token**: `NOTION_TOKEN` (`secret_xxxx`)
+- **Internal Integration Token**: `NOTION_API_KEY` (`secret_xxxx` or `ntn_xxxx`、旧名 `NOTION_TOKEN` も互換あり)
 - 各 DB ページで `Add connections` から Integration を許可しないと API が 403
   → `SETUP.md` G2-3 を参照
 
@@ -99,7 +99,7 @@ tail -n 100 /tmp/sync_notion.log
 
 | エラー | 原因 | 対処 |
 |---|---|---|
-| `401 Unauthorized` | `NOTION_TOKEN` 未設定 or 失効 | `.env` 再確認、Integration を再発行 |
+| `401 Unauthorized` | `NOTION_API_KEY` 未設定 or 失効 | `.env` 再確認、Integration を再発行 |
 | `404 object_not_found` | `NOTION_DB_TASKS` の DB ID が間違い | URL から再取得（`SETUP.md` G2-4） |
 | `validation_error` | プロパティ名 / 型が DB と不一致 | DB スキーマ §3 と照合 |
 | `restricted_resource` | DB に Integration を許可してない | `Add connections` し直す |

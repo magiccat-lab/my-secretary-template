@@ -42,8 +42,11 @@ time.sleep(random.uniform(0, 5))
 SECRETARY_HOME = Path(os.environ.get("SECRETARY_HOME", str(Path(__file__).resolve().parents[3])))
 load_dotenv(SECRETARY_HOME / ".env")
 
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
-DB_ID = os.environ.get("NOTION_DB_TASKS", "")
+sys.path.insert(0, str(SECRETARY_HOME / "scripts"))
+from lib.notion_env import get_api_key, get_db_id
+
+NOTION_TOKEN = get_api_key()
+DB_ID = get_db_id("tasks")
 PENDING_JSON = SECRETARY_HOME / "data" / "pending_tasks.json"
 
 NOTION_API = "https://api.notion.com/v1"
@@ -128,7 +131,7 @@ def update_page(page_id: str, props: dict) -> bool:
 
 def main() -> int:
     if not NOTION_TOKEN:
-        print("❌ NOTION_TOKEN が .env に未設定", file=sys.stderr)
+        print("❌ NOTION_API_KEY が .env に未設定", file=sys.stderr)
         return 1
     if not DB_ID:
         print("❌ NOTION_DB_TASKS が .env に未設定", file=sys.stderr)
