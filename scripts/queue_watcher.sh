@@ -47,10 +47,15 @@ is_claude_idle() {
         return 1
     fi
 
-    # Claude Code のプロンプト待ち: 末尾行に > か $ か ❯ がある
+    # Claude プロセスが生きていなければ idle とみなさない（shell fallback 防止）
+    if ! pgrep -f "claude" > /dev/null 2>&1; then
+        return 1
+    fi
+
+    # Claude Code のプロンプト待ち: 末尾行に > か ❯ がある
     local last_line
     last_line=$(echo "$content" | grep -v '^$' | tail -1)
-    if echo "$last_line" | grep -qE '(\$|>|❯)\s*$'; then
+    if echo "$last_line" | grep -qE '(>|❯)\s*$'; then
         return 0
     fi
 

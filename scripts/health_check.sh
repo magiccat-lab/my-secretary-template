@@ -21,9 +21,7 @@ log() {
 }
 
 notify_discord() {
-    curl -s -X POST http://localhost:8781/remind \
-        -H "Content-Type: application/json" \
-        -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}" > /dev/null 2>&1
+    notify_discord_direct "$1"
 }
 
 notify_discord_direct() {
@@ -33,10 +31,12 @@ notify_discord_direct() {
         token=$(grep "^DISCORD_BOT_TOKEN=" "$token_file" | cut -d'=' -f2-)
     fi
     if [ -z "$token" ]; then return; fi
+    local payload
+    payload=$(jq -n --arg content "$1" '{content: $content}')
     curl -s -X POST "https://discord.com/api/v10/channels/${DISCORD_CHANNEL}/messages" \
         -H "Authorization: Bot $token" \
         -H "Content-Type: application/json" \
-        -d "{\"content\": \"$1\"}" > /dev/null 2>&1
+        -d "$payload" > /dev/null 2>&1
 }
 
 failures=0
