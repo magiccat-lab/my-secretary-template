@@ -921,13 +921,14 @@ chmod 600 ~/secretary/.env
 タスク、Wishlist、Log Library、通知先チャンネルや機能トグルを Notion で管理します。
 Notion の無料プランで十分動きます。**使わない人はこのセクション全部スキップして H に進んで OK。**
 
-このテンプレートでは、Notion 側に次の 4 DB を用意します。
+このテンプレートでは、Notion 側に次の 5 DB を用意します。
 
 | DB | 用途 |
 |---|---|
 | **Tasks** | タスク同期（`pending_tasks.json` ↔ Notion） |
 | **Wishlist** | 行きたい店、欲しいもの、読みたい記事など |
 | **Log Library** | 会話ログ、日記、運用ログの保存先 |
+| **お店リスト** | 行きたい店・行った店をジャンル / エリア / 予算帯で管理 |
 | **環境設定** | DB ID、Discord channel ID、機能トグルをまとめる bootstrap DB |
 
 `.env` に直接たくさんの ID を書く代わりに、**`.env` には API key と `環境設定` DB の ID だけ**を書きます。
@@ -943,7 +944,7 @@ Notion の無料プランで十分動きます。**使わない人はこのセ�
 3. 複製先に **自分のワークスペース**を選ぶ
 4. 「MY-Secretary Home」ページが自分のワークスペースに入る
 
-複製後、ページ配下に **Tasks / Wishlist / Log Library / 環境設定** の 4 DB があることを確認してください。
+複製後、ページ配下に **Tasks / Wishlist / Log Library / お店リスト / 環境設定** の 5 DB があることを確認してください。
 
 ### G2-2. Notion Integration を作る
 
@@ -961,14 +962,15 @@ Notion の無料プランで十分動きます。**使わない人はこのセ�
 
 > ⚠️ この secret は API key です。**Notion の DB には絶対に書かないでください**。VPS の `.env` だけに保存します。
 
-### G2-3. Integration を 4 DB に許可する
+### G2-3. Integration を 5 DB に許可する
 
-このステップを忘れると API が 403 で弾かれます。**4 つすべて**に対して行います。
+このステップを忘れると API が 403 で弾かれます。**5 つすべて**に対して行います。
 
 1. `Tasks` DB を開く → 右上「**…**」→ **Connect to** → G2-2 の Integration 名を選択 → `Confirm`
 2. `Wishlist` DB でも同じ操作
 3. `Log Library` DB でも同じ操作
-4. `環境設定` DB でも同じ操作
+4. `お店リスト` DB でも同じ操作
+5. `環境設定` DB でも同じ操作
 
 > 親ページ「MY-Secretary Home」に connection しただけでは、DB の API アクセスが通らないことがあります。
 > **必ず各 DB ページで connection されていることを確認**してください。
@@ -985,7 +987,7 @@ https://www.notion.so/your-workspace/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?v=...
 
 `?v=` の前にある 32 文字（ハイフン無し）が DB ID です。コピーしてメモします。
 
-> 💡 他の 3 DB（Tasks / Wishlist / Log Library）の ID は `環境設定` DB に書くので、
+> 💡 他の 4 DB（Tasks / Wishlist / Log Library / お店リスト）の ID は `環境設定` DB に書くので、
 > `.env` に直接書く必要はありません。
 
 ### G2-5. `.env` に Notion 設定を追記
@@ -1014,13 +1016,14 @@ grep -E '^(NOTION_API_KEY|SECRETARY_ENV_DB_ID)=' ~/secretary/.env | sed 's/=.*/=
 ### G2-6. `環境設定` DB に他の DB ID を記入
 
 Notion で `環境設定` DB を開き、テンプレートに用意してあるサンプル行の **値** 列を埋めます。
-最低限必要なのは以下の 3 つです:
+最低限必要なのは以下の 4 つです:
 
 | 設定名 | カテゴリ | 記入する値 |
 |---|---|---|
 | `NOTION_DB_TASKS` | db_id | Tasks DB の ID（G2-4 と同じ要領で URL から取得） |
 | `NOTION_DB_WISHLIST` | db_id | Wishlist DB の ID |
 | `NOTION_DB_LOG_LIBRARY` | db_id | Log Library DB の ID |
+| `NOTION_DB_SHOP_LIST` | db_id | お店リスト DB の ID |
 
 他のサンプル行（`default_channel` / `morning_greeting_channel` 等）は後から埋めて OK。
 
@@ -1054,7 +1057,7 @@ Discord のログが毎日 23:50 に Notion Log Library へ自動送信されま
 | 症状 | 主な原因 | 対処 |
 |---|---|---|
 | `401 Unauthorized` | API key が違う・空白入り・失効 | `.env` の `NOTION_API_KEY` を確認、必要なら secret を再発行 |
-| `403 restricted_resource` | DB に Integration が connection されていない | G2-3 を再確認。**4 DB すべて**で connection が必要 |
+| `403 restricted_resource` | DB に Integration が connection されていない | G2-3 を再確認。**5 DB すべて**で connection が必要 |
 | `404 object_not_found` | `SECRETARY_ENV_DB_ID` が違う・別 workspace の DB | `環境設定` DB の URL から ID を取り直す |
 | `環境設定` は読めるが `Tasks` が読めない | `環境設定` DB に書いた ID が間違い、または参照先 DB の connection 漏れ | `環境設定` の値を確認 + 対象 DB で connection を追加 |
 | `validation_error` | DB のプロパティ名や型がテンプレートから変わった | テンプレート標準のプロパティ名・型に戻す |

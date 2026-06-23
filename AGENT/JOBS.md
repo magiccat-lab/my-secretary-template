@@ -82,6 +82,11 @@
 - Cron: なし（会話駆動。エージェントが「〇〇記録して」を受けたら CLI 実行）
 - Env: `NOTION_TOKEN`, `NOTION_DB_WISHLIST`
 
+### お店リスト追加（オンデマンド）
+- スクリプト: `scripts/integrations/notion/shop_list_add.py`
+- Cron: なし（会話駆動。「〇〇って店いいらしい」「〇〇行きたい」を受けたら CLI 実行）
+- Env: `NOTION_TOKEN`, `NOTION_DB_SHOP_LIST`
+
 ---
 
 ## サンプルジョブ（実装例・コピペして使う）

@@ -20,6 +20,7 @@ _ENV_KEY_MAP = {
     "tasks": "NOTION_DB_TASKS",
     "wishlist": "NOTION_DB_WISHLIST",
     "log_library": "NOTION_DB_LOG_LIBRARY",
+    "shop_list": "NOTION_DB_SHOP_LIST",
 }
 
 
