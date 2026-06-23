@@ -916,24 +916,34 @@ chmod 600 ~/secretary/.env
 
 ---
 
-## G2. Notion 連携（タスク・Wishlist を Notion で管理する、任意）
+## G2. Notion 連携（テンプレートを複製して、タスク・ログを Notion で管理する、任意）
 
-タスク（`pending_tasks.json`）と「行きたい店リスト」「読みたい本リスト」を
-Notion DB に同期して、スマホからも見られるようにします。Notion の無料プラン
-で十分動きます。**使わない人はこのセクション全部スキップして H に進んで OK。**
+タスク、Wishlist、Log Library、通知先チャンネルや機能トグルを Notion で管理します。
+Notion の無料プランで十分動きます。**使わない人はこのセクション全部スキップして H に進んで OK。**
+
+このテンプレートでは、Notion 側に次の 4 DB を用意します。
+
+| DB | 用途 |
+|---|---|
+| **Tasks** | タスク同期（`pending_tasks.json` ↔ Notion） |
+| **Wishlist** | 行きたい店、欲しいもの、読みたい記事など |
+| **Log Library** | 会話ログ、日記、運用ログの保存先 |
+| **環境設定** | DB ID、Discord channel ID、機能トグルをまとめる bootstrap DB |
+
+`.env` に直接たくさんの ID を書く代わりに、**`.env` には API key と `環境設定` DB の ID だけ**を書きます。
+他の DB ID やチャンネル ID は `環境設定` DB から読み取ります。
 
 ### G2-1. テンプレートを複製する
 
-プロパティ設定済みの **Tasks / Wishlist DB** を用意してあります。手作業で
-プロパティを作る必要はありません。下のテンプレートを自分のワークスペースに
-複製するだけです。
+プロパティ設定済みの DB を用意してあります。手作業でプロパティを作る必要はありません。
 
 1. ブラウザで公開テンプレを開く:
-   **https://amusing-toothpaste-b61.notion.site/my-secretary-template-3726db67136b816dbdb9e814c3ae38da**
+   **https://amusing-toothpaste-b61.notion.site/MY-Secretary-Home-3726db67136b816dbdb9e814c3ae38da**
 2. 右上の **「複製」（Duplicate）** をクリック
 3. 複製先に **自分のワークスペース**を選ぶ
-4. 「🤖 my-secretary-template 公開テンプレ」ページが自分のワークスペースに入る。
-   中に **Tasks** と **Wishlist** の 2 つの DB がある（プロパティ設定済み）
+4. 「MY-Secretary Home」ページが自分のワークスペースに入る
+
+複製後、ページ配下に **Tasks / Wishlist / Log Library / 環境設定** の 4 DB があることを確認してください。
 
 ### G2-2. Notion Integration を作る
 
@@ -944,110 +954,108 @@ Notion DB に同期して、スマホからも見られるようにします。N
 3. 名前を適当に（例: `my-secretary`）
 4. 関連付ける Workspace は自分の personal を選ぶ
 5. `Type` は **`Internal`** を選択
-6. `Submit` をクリック
-7. 表示された **`Internal Integration Secret`** （`secret_xxxx...` で始まる
-   長い文字列）をコピーして安全な場所にメモ（これが `NOTION_TOKEN`）
+6. Capabilities で **`Read content`** / **`Insert content`** / **`Update content`** を有効にする（`Delete content` は外す）
+7. `Submit` をクリック
+8. 表示された **`Internal Integration Secret`** （`secret_xxxx...` で始まる
+   長い文字列）をコピーして安全な場所にメモ
 
-### G2-3. Integration を各 DB に許可する
+> ⚠️ この secret は API key です。**Notion の DB には絶対に書かないでください**。VPS の `.env` だけに保存します。
 
-このステップを忘れると API が 403 で弾かれます。**複製した Tasks / Wishlist /
-Log Library の 3 つすべて**に対して行います。
+### G2-3. Integration を 4 DB に許可する
 
-1. 複製した Tasks DB ページの右上「**…**」メニューを開く
-2. `Connections` または `+ Add connections` をクリック
-3. 検索窓に G2-2 で作った Integration 名を打って選択 → `Confirm`
-4. Wishlist DB と Log Library DB でも同じく Integration を connect
+このステップを忘れると API が 403 で弾かれます。**4 つすべて**に対して行います。
 
-### G2-4. Tasks / Wishlist / Log Library の DB ID を取得
+1. `Tasks` DB を開く → 右上「**…**」→ **Connect to** → G2-2 の Integration 名を選択 → `Confirm`
+2. `Wishlist` DB でも同じ操作
+3. `Log Library` DB でも同じ操作
+4. `環境設定` DB でも同じ操作
 
-各 DB ページのブラウザ URL を見ます。例:
+> 親ページ「MY-Secretary Home」に connection しただけでは、DB の API アクセスが通らないことがあります。
+> **必ず各 DB ページで connection されていることを確認**してください。
+
+### G2-4. `環境設定` DB の ID を取得
+
+`環境設定` DB ページのブラウザ URL を見ます。例:
 
 ```
-https://www.notion.so/USERNAME/Tasks-7c2c9b3a4f1e44d8a9f2e8b1d0c7e6f3?v=...
-                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                       この 32 文字が DB ID
+https://www.notion.so/your-workspace/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?v=...
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                      この 32 文字が DB ID
 ```
 
-DB 名（`Tasks-` / `Wishlist-` / `Log-Library-`）の **直後**から `?v=` の **直前**までの
-32 文字（ハイフン無し）が DB ID です。**3 つ**メモします
-（`NOTION_DB_TASKS` / `NOTION_DB_WISHLIST` / `NOTION_DB_LOG_LIBRARY`）。
+`?v=` の前にある 32 文字（ハイフン無し）が DB ID です。コピーしてメモします。
 
-### G2-6. `.env` に追記
+> 💡 他の 3 DB（Tasks / Wishlist / Log Library）の ID は `環境設定` DB に書くので、
+> `.env` に直接書く必要はありません。
 
-VPS 側で、下の **`paste_*` 4 箇所を実際の値に書き換えてから** まるごとコピペして実行
-（§G の `.env` 作成と同じ heredoc 方式。エディタは開きません）:
+### G2-5. `.env` に Notion 設定を追記
+
+VPS 側で、下の **`paste_*` 2 箇所を実際の値に書き換えてから** まるごとコピペして実行:
 
 ```bash
 cat >> ~/secretary/.env <<'EOF'
-NOTION_TOKEN=secret_paste_here
-NOTION_DB_TASKS=paste_tasks_db_id_here
-NOTION_DB_WISHLIST=paste_wishlist_db_id_here
-NOTION_DB_LOG_LIBRARY=paste_log_library_db_id_here
+NOTION_API_KEY=secret_paste_api_key_here
+SECRETARY_ENV_DB_ID=paste_environment_settings_db_id_here
 EOF
+chmod 600 ~/secretary/.env
 ```
 
 追記できたか確認:
 
 ```bash
-grep -E '^NOTION_' ~/secretary/.env
+grep -E '^NOTION_API_KEY|^SECRETARY_ENV_DB_ID' ~/secretary/.env
 ```
 
-4 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
+2 行とも実際の値（`paste_*` のままでない）が表示されれば OK。
 
-### G2-7. 同期スクリプトを 1 回手動実行して確認
+> 💡 旧バージョンで `NOTION_TOKEN` を使っていた場合: スクリプトは `NOTION_API_KEY` を優先し、
+> なければ `NOTION_TOKEN` に fallback します。新規ユーザーは `NOTION_API_KEY` だけでOK。
 
-まず動作確認用にタスクを 1 件足してから同期します（テンプレート直後は
-`pending_tasks.json` が空なので、何も足さないと `created=0` になり成否が
-分かりません）:
+### G2-6. `環境設定` DB に他の DB ID を記入
+
+Notion で `環境設定` DB を開き、テンプレートに用意してあるサンプル行の **値** 列を埋めます。
+最低限必要なのは以下の 3 つです:
+
+| 設定名 | カテゴリ | 記入する値 |
+|---|---|---|
+| `NOTION_DB_TASKS` | db_id | Tasks DB の ID（G2-4 と同じ要領で URL から取得） |
+| `NOTION_DB_WISHLIST` | db_id | Wishlist DB の ID |
+| `NOTION_DB_LOG_LIBRARY` | db_id | Log Library DB の ID |
+
+他のサンプル行（`default_channel` / `morning_greeting_channel` 等）は後から埋めて OK。
+
+### G2-7. 接続を検証する
 
 ```bash
-# 確認用タスクを 1 件追加（pending_tasks.json は {"primary": [...]} 構造）
-python3 - <<'EOF'
-import json, pathlib
-p = pathlib.Path.home() / "secretary" / "data" / "pending_tasks.json"
-data = json.loads(p.read_text()) if p.exists() else {"primary": []}
-data.setdefault("primary", []).append(
-    {"title": "Notion 同期テスト", "done": False, "created_at": "2026-01-01"}
-)
-p.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-print("added")
-EOF
+cd ~/secretary
+python3 scripts/check_secrets.py --notion
+```
+
+全項目が OK なら成功。エラーが出たら下の「G2-10. よくあるエラー」を見てください。
+
+### G2-8. タスク同期を 1 回手動実行して確認
+
+```bash
 python3 ~/secretary/scripts/integrations/notion/sync_pending_to_notion.py
 ```
 
-`✅ sync 完了: created=1 / updated=0 / failed=0`（`created` か `updated` が
-**1 以上**）が出れば成功。`failed=0` だけでなく **created/updated が増えている**
-ことを必ず確認してください。Notion の Tasks DB に「Notion 同期テスト」の行が
-見えれば完璧です（確認後はその行を消して OK）。
+`sync 完了: created=N / updated=M / failed=0` が出れば成功。
+Notion の `Tasks` DB にローカルタスクが反映されているはずです。
 
-### G2-8. 5 分おきに自動同期する cron を追加
+### G2-9. 自動同期の cron を追加
 
-エディタを開かず、下のコマンドをまるごとコピペして実行すれば 1 行追記されます
-（`$HOME` が自動でユーザーのホームに展開されるので、ユーザー名の書き換えは不要）:
+§I のコア cron で Notion 同期も含めて一括登録します。ここでは手動で足す必要はありません。
+（個別に足したい場合は `docs/cron.md` 参照。）
 
-```bash
-(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_notion.log 2>&1") | crontab -
-```
+### G2-10. よくあるエラー
 
-登録できたか確認:
-
-```bash
-crontab -l | grep sync_pending_to_notion
-```
-
-その 1 行が表示されれば OK。
-
-> ⚠️ `python3` ではなく **絶対パスの `/usr/bin/python3`** を使うこと。
-> cron の PATH には `python3` が無いことがあります（上のコマンドは対応済み）。
-
-### G2-9. Wishlist 追加コマンドの動作確認（任意）
-
-```bash
-python3 ~/secretary/scripts/integrations/notion/wishlist_add.py \
-  --name "テスト追加" --category "Tips" --memo "セットアップ確認"
-```
-
-`✅ 追加成功` が出れば OK。Notion の Wishlist DB に新規ページが見えるはず。
+| 症状 | 主な原因 | 対処 |
+|---|---|---|
+| `401 Unauthorized` | API key が違う・空白入り・失効 | `.env` の `NOTION_API_KEY` を確認、必要なら secret を再発行 |
+| `403 restricted_resource` | DB に Integration が connection されていない | G2-3 を再確認。**4 DB すべて**で connection が必要 |
+| `404 object_not_found` | `SECRETARY_ENV_DB_ID` が違う・別 workspace の DB | `環境設定` DB の URL から ID を取り直す |
+| `環境設定` は読めるが `Tasks` が読めない | `環境設定` DB に書いた ID が間違い、または参照先 DB の connection 漏れ | `環境設定` の値を確認 + 対象 DB で connection を追加 |
+| `validation_error` | DB のプロパティ名や型がテンプレートから変わった | テンプレート標準のプロパティ名・型に戻す |
 
 ここまで終わったら H に進みます。
 
