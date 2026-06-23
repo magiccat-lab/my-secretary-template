@@ -32,7 +32,7 @@ notify_discord_direct() {
     fi
     if [ -z "$token" ]; then return; fi
     local payload
-    payload=$(jq -n --arg content "$1" '{content: $content}')
+    payload=$(python3 -c "import json,sys; print(json.dumps({'content': sys.argv[1]}))" "$1")
     curl -s -X POST "https://discord.com/api/v10/channels/${DISCORD_CHANNEL}/messages" \
         -H "Authorization: Bot $token" \
         -H "Content-Type: application/json" \

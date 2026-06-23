@@ -26,6 +26,17 @@ Claude Code をエンジンに、プライベートな Discord チャンネル�
 | Discord アカウント + bot | 無料 |
 | Google アカウント（Calendar / Gmail を使う場合のみ） | 無料 |
 
+## セキュリティ上の前提
+
+このテンプレートは **自分だけが使う private VPS** での運用を前提としています。
+Claude Code を `--dangerously-skip-permissions` で常駐させるため、同一ホスト上の
+他ユーザーや外部ネットワークからの入力が信頼境界を越えて到達しないよう注意してください。
+
+- webhook サーバーはデフォルトで `127.0.0.1` のみにバインドします。
+  外部公開する場合は `WEBHOOK_HOST` + reverse proxy (HTTPS) を設定してください。
+- メール通知はデータとして扱われますが、LLM への入力である以上、
+  完全なプロンプトインジェクション耐性は保証されません。
+
 ## ライセンス
 
 MIT。[LICENSE](LICENSE) を参照。

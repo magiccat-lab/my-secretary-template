@@ -37,6 +37,7 @@ from google.oauth2.credentials import Credentials  # noqa: E402
 from googleapiclient.discovery import build  # noqa: E402
 
 from scripts.lib.state_store import load_state, save_state  # noqa: E402
+from scripts.lib import webhook_client  # noqa: E402
 
 TOKEN = os.getenv(
     "GOOGLE_TOKEN_PATH",
@@ -208,7 +209,7 @@ def main() -> None:
                 if n["is_silent_archive"]:
                     archive(service, n["mid"])
                     continue
-                requests.post(WEBHOOK, json=n, timeout=10)
+                webhook_client.post(WEBHOOK, json=n, timeout=10)
                 mark_read(service, n["mid"])
                 if n["is_auto_reply"]:
                     archive(service, n["mid"])

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """先輩待ちタスクリマインダー - 未完了タスクがあれば通知"""
 import json
-import requests
 import os
+import sys
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from scripts.lib import webhook_client  # noqa: E402
+
+load_dotenv(os.path.join(_REPO_ROOT, '.env'))
 
 TASKS_FILE = os.path.expanduser('~/secretary/data/pending_tasks.json')
 WEBHOOK = 'http://localhost:8781/remind'
@@ -38,7 +44,7 @@ def main():
         lines.append(f'・{t["title"]}')
 
     message = '\n'.join(lines)
-    requests.post(WEBHOOK, json={
+    webhook_client.post(WEBHOOK, json={
         'channel_id': CHANNEL_ID,
         'message': message
     }, timeout=10)

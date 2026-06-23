@@ -30,6 +30,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from scripts.lib.state_store import load_state, save_state  # noqa: E402
+from scripts.lib import webhook_client  # noqa: E402
 
 load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
@@ -85,7 +86,7 @@ def main() -> None:
         msg = f"30分後に予定があります\n**{time_str} {summary}**"
 
         try:
-            requests.post(
+            webhook_client.post(
                 WEBHOOK_URL,
                 json={"message": msg, "channel": DISCORD_CHANNEL},
                 timeout=5,
