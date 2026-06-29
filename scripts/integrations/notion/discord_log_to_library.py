@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """discord_log_to_library.py — Discord ログを日次で Notion Log Library DB に送る。
 
-直近 24 時間の Discord メッセージ（DISCORD_CHANNEL_RANDOM / DISCORD_CHANNEL_MAIL /
-DISCORD_CHANNEL_EXTRA）を集めて、Notion の Log Library DB に 1 ページとして投下する。
+直近 24 時間の Discord メッセージを集めて、Notion の Log Library DB に 1 ページとして投下する。
 まとめ資料・ログは md でなく Notion Log Library に集約する方針（AGENT/AGENTS.md 参照）。
 
+チャンネル取得モード:
+    1. DISCORD_GUILD_ID を設定 → サーバー内の全テキストチャンネルを自動取得（推奨）
+       DISCORD_LOG_EXCLUDE_CHANNELS でカンマ区切りのチャンネルIDを除外可能
+    2. DISCORD_GUILD_ID が未設定 → 従来どおり RANDOM/MAIL/EXTRA の明示指定のみ
+
 環境変数:
-    NOTION_TOKEN             Notion Internal Integration Secret
-    NOTION_DB_LOG_LIBRARY    Log Library DB の ID
-    DISCORD_CHANNEL_RANDOM   主チャンネル（必須）
-    DISCORD_CHANNEL_MAIL     メールチャンネル（任意）
-    DISCORD_CHANNEL_EXTRA    追加チャンネル（カンマ区切り、任意）
-    DISCORD_BOT_TOKEN        ~/.claude/channels/discord/.env から読む
+    NOTION_TOKEN                  Notion Internal Integration Secret
+    NOTION_DB_LOG_LIBRARY         Log Library DB の ID
+    DISCORD_GUILD_ID              サーバーID（設定すると全チャンネル自動取得）
+    DISCORD_LOG_EXCLUDE_CHANNELS  除外チャンネルID（カンマ区切り、任意）
+    DISCORD_CHANNEL_RANDOM        主チャンネル（GUILD_ID 未設定時は必須）
+    DISCORD_CHANNEL_MAIL          メールチャンネル（任意）
+    DISCORD_CHANNEL_EXTRA         追加チャンネル（カンマ区切り、任意）
+    DISCORD_BOT_TOKEN             ~/.claude/channels/discord/.env から読む
 
 cron の例（毎日 23:50 にその日の分を送る）:
     50 23 * * * /usr/bin/python3 ~/secretary/scripts/integrations/notion/discord_log_to_library.py >> /tmp/discord_log_to_library.log 2>&1
@@ -53,8 +59,42 @@ def _discord_token() -> str:
     return ""
 
 
-def _channels() -> list[tuple[str, str]]:
+def _guild_channels(token: str, guild_id: str) -> list[tuple[str, str]]:
+    """ギルド内の全テキストチャンネルを (name, channel_id) で返す。"""
+    headers = {"Authorization": f"Bot {token}"}
+    r = requests.get(
+        f"{DISCORD_API}/guilds/{guild_id}/channels",
+        headers=headers, timeout=TIMEOUT_SEC,
+    )
+    if r.status_code != 200:
+        print(f"⚠ ギルドチャンネル取得失敗: HTTP {r.status_code}", file=sys.stderr)
+        return []
+    exclude = {
+        x.strip()
+        for x in os.environ.get("DISCORD_LOG_EXCLUDE_CHANNELS", "").split(",")
+        if x.strip()
+    }
+    # type 0=text, 5=announcement — voice/category/forum は除外
+    text_types = {0, 5}
+    out: list[tuple[str, str]] = []
+    for ch in sorted(r.json(), key=lambda c: c.get("position", 0)):
+        if ch.get("type") not in text_types:
+            continue
+        ch_id = ch["id"]
+        if ch_id in exclude:
+            continue
+        out.append((ch.get("name", ch_id), ch_id))
+    return out
+
+
+def _channels(token: str = "") -> list[tuple[str, str]]:
     """(label, channel_id) のリスト。空 ID は除外。"""
+    guild_id = os.environ.get("DISCORD_GUILD_ID", "").strip()
+    if guild_id and token:
+        chs = _guild_channels(token, guild_id)
+        if chs:
+            return chs
+        print("⚠ ギルドチャンネル取得失敗、明示指定にフォールバック", file=sys.stderr)
     out: list[tuple[str, str]] = []
     main = os.environ.get("DISCORD_CHANNEL_RANDOM", "").strip()
     mail = os.environ.get("DISCORD_CHANNEL_MAIL", "").strip()
@@ -104,20 +144,24 @@ def _chunk(text: str, size: int) -> list[str]:
     return [text[i : i + size] for i in range(0, len(text), size)] or [""]
 
 
-def create_log_page(title: str, date_str: str, source: str, summary: str, body: str) -> bool:
-    headers = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json",
-    }
-    children = [
+def _blocks_from_text(text: str) -> list[dict]:
+    return [
         {
             "object": "block",
             "type": "paragraph",
             "paragraph": {"rich_text": [{"type": "text", "text": {"content": chunk}}]},
         }
-        for chunk in _chunk(body, MAX_BLOCK_CHARS)[:90]  # Notion children 上限 100 に余裕
+        for chunk in _chunk(text, MAX_BLOCK_CHARS)
     ]
+
+
+def create_log_page(title: str, date_str: str, source: str, summary: str,
+                    children: list[dict]) -> bool:
+    headers = {
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+    }
     payload = {
         "parent": {"database_id": DB_ID},
         "properties": {
@@ -127,7 +171,7 @@ def create_log_page(title: str, date_str: str, source: str, summary: str, body: 
             "Source": {"rich_text": [{"text": {"content": source[:200]}}]},
             "Summary": {"rich_text": [{"text": {"content": summary[:1900]}}]},
         },
-        "children": children,
+        "children": children[:90],
     }
     r = requests.post(
         f"{NOTION_API}/pages", headers=headers, json=payload, timeout=TIMEOUT_SEC
@@ -156,7 +200,9 @@ def main() -> int:
     lines: list[str] = []
     total = 0
     labels: list[str] = []
-    for label, ch_id in _channels():
+    channels = _channels(token)
+    print(f"対象チャンネル: {len(channels)} 件")
+    for label, ch_id in channels:
         msgs = fetch_messages(token, ch_id, cutoff)
         if not msgs:
             continue
@@ -166,9 +212,19 @@ def main() -> int:
             ts = datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00")).astimezone(JST)
             author = m.get("author", {}).get("username", "?")
             content = m.get("content") or ""
-            if not content:
-                content = "[添付/埋め込みのみ]"
-            lines.append(f"[{ts:%H:%M}] {author}: {content}")
+            extras: list[str] = []
+            for att in m.get("attachments", []):
+                extras.append(f"[添付: {att.get('filename', '?')}]")
+            for emb in m.get("embeds", []):
+                emb_title = emb.get("title") or emb.get("description", "")[:60]
+                if emb_title:
+                    extras.append(f"[埋込: {emb_title}]")
+            if not content and not extras:
+                content = "[空メッセージ]"
+            line = f"[{ts:%H:%M}] {author}: {content}"
+            if extras:
+                line += " " + " ".join(extras)
+            lines.append(line)
         lines.append("")
         total += len(msgs)
         time.sleep(0.4)  # Discord レート制限に余裕
@@ -179,15 +235,26 @@ def main() -> int:
 
     body = "\n".join(lines)
     summary = f"{date_str} の Discord ログ {total} 件 / ch: {', '.join(labels)}"
-    ok = create_log_page(
-        title=f"Discord log {date_str}",
-        date_str=date_str,
-        source=", ".join(labels),
-        summary=summary,
-        body=body,
-    )
-    print(f"✅ Log Library に投下: {total} 件" if ok else "❌ 投下失敗")
-    return 0 if ok else 1
+    blocks = _blocks_from_text(body)
+    max_blocks = 90
+    page_num = 0
+    all_ok = True
+    while blocks:
+        page_num += 1
+        batch, blocks = blocks[:max_blocks], blocks[max_blocks:]
+        suffix = f" (part {page_num})" if page_num > 1 or blocks else ""
+        ok = create_log_page(
+            title=f"Discord log {date_str}{suffix}",
+            date_str=date_str,
+            source=", ".join(labels),
+            summary=summary if page_num == 1 else f"{summary} (続き part {page_num})",
+            children=batch,
+        )
+        if not ok:
+            all_ok = False
+            break
+    print(f"✅ Log Library に投下: {total} 件 ({page_num} ページ)" if all_ok else "❌ 投下失敗")
+    return 0 if all_ok else 1
 
 
 if __name__ == "__main__":

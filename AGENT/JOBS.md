@@ -72,8 +72,11 @@
 ### Discord ログ → Log Library（必須・日次）
 - スクリプト: `scripts/integrations/notion/discord_log_to_library.py`
 - Cron: `50 23 * * *`（コア cron セット）
-- Env: `NOTION_TOKEN`, `NOTION_DB_LOG_LIBRARY`, `DISCORD_CHANNEL_*`
-- その日の Discord ログ（24h）を Notion Log Library DB に 1 ページで投下。Notion 未設定なら skip。
+- Env: `NOTION_TOKEN`, `NOTION_DB_LOG_LIBRARY`, `DISCORD_GUILD_ID`（全チャンネル自動取得）
+- `DISCORD_GUILD_ID` を設定するとサーバー内の全テキストチャンネルからログを自動収集。
+  未設定の場合は `DISCORD_CHANNEL_RANDOM` / `MAIL` / `EXTRA` の明示指定のみ。
+- `DISCORD_LOG_EXCLUDE_CHANNELS` でカンマ区切りの除外チャンネルIDを指定可能。
+- ログ量が多い場合は自動で複数ページに分割。添付・埋め込みも記録。Notion 未設定なら skip。
 - まとめ資料も md でなく Log Library に集約する方針（AGENT/AGENTS.md「まとめ資料・ログは Notion Log Library へ」）。
 
 ### Wishlist 追加（オンデマンド）
