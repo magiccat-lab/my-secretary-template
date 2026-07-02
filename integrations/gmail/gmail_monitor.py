@@ -157,7 +157,8 @@ def main() -> None:
                 return
 
     state = _load_state()
-    seen_ids = set(state.get("seen_ids", []))
+    seen_id_list = [mid for mid in state.get("seen_ids", []) if isinstance(mid, str)]
+    seen_ids = set(seen_id_list)
     first_run = len(seen_ids) == 0
 
     result = (
@@ -165,12 +166,13 @@ def main() -> None:
     )
     messages = result.get("messages", [])
 
-    new_seen = set()
+    new_seen_ids = []
+    failed_ids = set()
     notifications = []
 
     for m in messages:
         mid = m["id"]
-        new_seen.add(mid)
+        new_seen_ids.append(mid)
         if mid in seen_ids:
             continue
 
@@ -210,9 +212,11 @@ def main() -> None:
                     archive(service, n["mid"])
             except Exception as e:
                 print(f"通知失敗（次回リトライします）: {e}")
-                new_seen.discard(n["mid"])
+                failed_ids.add(n["mid"])
 
-    state["seen_ids"] = list(seen_ids | new_seen)[-200:]
+    state["seen_ids"] = list(
+        dict.fromkeys(seen_id_list + [mid for mid in new_seen_ids if mid not in failed_ids])
+    )[-200:]
     _save_state(state)
     print(f"完了: 新着 {len(notifications)} 件")
 

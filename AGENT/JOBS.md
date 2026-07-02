@@ -65,14 +65,14 @@
 ### Notion 同期（Tasks）
 - スクリプト: `scripts/integrations/notion/sync_pending_to_notion.py`
 - Cron: `*/5 * * * *`
-- Env: `NOTION_TOKEN`, `NOTION_DB_TASKS`
+- Env: `NOTION_API_KEY`, `SECRETARY_ENV_DB_ID`（または `NOTION_DB_TASKS` 直接指定）
 - `data/pending_tasks.json` を Notion DB に片方向同期（5 分間隔）。
 - セットアップは `SETUP.md` G2 / 詳細 `docs/notion.md` 参照。
 
 ### Discord ログ → Log Library（必須・日次）
 - スクリプト: `scripts/integrations/notion/discord_log_to_library.py`
 - Cron: `50 23 * * *`（コア cron セット）
-- Env: `NOTION_TOKEN`, `NOTION_DB_LOG_LIBRARY`, `DISCORD_GUILD_ID`（全チャンネル自動取得）
+- Env: `NOTION_API_KEY`, `SECRETARY_ENV_DB_ID`（または `NOTION_DB_LOG_LIBRARY` 直接指定）, `DISCORD_GUILD_ID`（全チャンネル自動取得）
 - `DISCORD_GUILD_ID` を設定するとサーバー内の全テキストチャンネルからログを自動収集。
   未設定の場合は `DISCORD_CHANNEL_RANDOM` / `MAIL` / `EXTRA` の明示指定のみ。
 - `DISCORD_LOG_EXCLUDE_CHANNELS` でカンマ区切りの除外チャンネルIDを指定可能。
@@ -82,7 +82,7 @@
 ### Wishlist 追加（オンデマンド）
 - スクリプト: `scripts/integrations/notion/wishlist_add.py`
 - Cron: なし（会話駆動。エージェントが「〇〇記録して」を受けたら CLI 実行）
-- Env: `NOTION_TOKEN`, `NOTION_DB_WISHLIST`
+- Env: `NOTION_API_KEY`, `SECRETARY_ENV_DB_ID`（または `NOTION_DB_WISHLIST` 直接指定）
 
 ---
 

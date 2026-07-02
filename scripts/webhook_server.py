@@ -11,6 +11,11 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 JST = timezone(timedelta(hours=9))
 
+try:
+    from scripts.lib.task_store import DEFAULT_SECTION, add_task
+except ModuleNotFoundError:
+    from lib.task_store import DEFAULT_SECTION, add_task
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -75,7 +80,6 @@ async def send_to_claude(message: str):
 @app.post("/remind")
 async def remind(request: Request):
     """リマインダー送信 + オプションでタスク追加"""
-    import json
     body = await request.json()
     logger.info(f"リマインド受信: {body}")
     msg = body.get("message", "")
@@ -85,19 +89,12 @@ async def remind(request: Request):
         return {"status": "error"}
     discord_send(channel, msg)
     if task_title:
-        tasks_file = os.path.expanduser("~/secretary/data/pending_tasks.json")
         try:
-            if os.path.exists(tasks_file):
-                with open(tasks_file) as f:
-                    data = json.load(f)
-            else:
-                data = {"primary": []}
-            target = data.get("primary", data.setdefault("tasks", []))
-            if not any(t.get("title") == task_title and not t.get("done") for t in target):
-                target.append({"title": task_title, "done": False})
-                with open(tasks_file, "w") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=2)
+            added = add_task(DEFAULT_SECTION, task_title)
+            if added:
                 logger.info(f"タスク追加: {task_title}")
+            else:
+                logger.info(f"タスク追加スキップ（重複）: {task_title}")
         except Exception as e:
             logger.error(f"タスク追加エラー: {e}")
     return {"status": "ok"}

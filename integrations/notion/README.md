@@ -12,10 +12,10 @@ Notion 連携の設定ファイル置き場。
 
 1. https://www.notion.so/my-integrations で Integration を作成
 2. Internal Integration Secret をコピー（`secret_xxxx` 形式）
-3. `~/secretary/.env` の `NOTION_TOKEN=` に貼り付け
+3. `~/secretary/.env` の `NOTION_API_KEY=` に貼り付け
 4. 同期したい Notion DB のページ右上「…」→「Add connections」で作った Integration を許可
 5. DB ページの URL から DB ID を取得（`https://www.notion.so/xxx?v=yyy` の `xxx` 部分）
-6. `.env` の `NOTION_DB_TASKS=` `NOTION_DB_WISHLIST=` に貼り付け
+6. `SECRETARY_ENV_DB_ID` の環境設定 DB に `NOTION_DB_TASKS` / `NOTION_DB_WISHLIST` / `NOTION_DB_LOG_LIBRARY` を書く（または `.env` に直接貼り付け）
 
 ## 同期スクリプト
 
