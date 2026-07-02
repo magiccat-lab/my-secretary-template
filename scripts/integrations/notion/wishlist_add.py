@@ -34,9 +34,13 @@ from dotenv import load_dotenv
 
 SECRETARY_HOME = Path(os.environ.get("SECRETARY_HOME", str(Path(__file__).resolve().parents[3])))
 load_dotenv(SECRETARY_HOME / ".env")
+if str(SECRETARY_HOME) not in sys.path:
+    sys.path.insert(0, str(SECRETARY_HOME))
 
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
-DB_ID = os.environ.get("NOTION_DB_WISHLIST", "")
+from scripts.lib.notion_config import get_notion_setting, notion_token  # noqa: E402
+
+NOTION_TOKEN = notion_token()
+DB_ID = get_notion_setting("NOTION_DB_WISHLIST", "")
 
 NOTION_API = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
@@ -59,7 +63,7 @@ def add_wishlist(
 ) -> tuple[bool, str]:
     """Wishlist DB に 1 ページ追加。成功フラグと message を返す"""
     if not NOTION_TOKEN or not DB_ID:
-        return False, "NOTION_TOKEN または NOTION_DB_WISHLIST が未設定"
+        return False, "NOTION_API_KEY（旧 NOTION_TOKEN）または NOTION_DB_WISHLIST が未設定"
 
     props: dict = {
         "名前": {"title": [{"text": {"content": name[:200]}}]},

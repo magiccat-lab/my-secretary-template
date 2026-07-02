@@ -64,32 +64,30 @@ def _backend() -> str:
 
 
 def _ensure_json_exists() -> None:
+    JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not JSON_PATH.exists():
-        JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-        JSON_PATH.write_text(json.dumps({DEFAULT_SECTION: []}, ensure_ascii=False, indent=2))
+        JSON_PATH.write_text(
+            json.dumps({DEFAULT_SECTION: []}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
 
 @contextlib.contextmanager
-def _locked_json(mode: str) -> Iterator:
-    _ensure_json_exists()
-    f = open(JSON_PATH, mode, encoding="utf-8")
+def _json_lock() -> Iterator[None]:
+    JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = JSON_PATH.with_suffix(JSON_PATH.suffix + ".lock")
+    lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
     try:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        yield f
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        yield
     finally:
         try:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
         finally:
-            f.close()
+            os.close(lock_fd)
 
 
-def _json_load_tasks() -> dict:
-    with _locked_json("r") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            return {DEFAULT_SECTION: []}
-
+def _normalize_tasks(data: dict) -> dict:
     # 旧形式 {"tasks": [...]} はデフォルトセクションに移行
     if "tasks" in data and DEFAULT_SECTION not in data:
         data = {DEFAULT_SECTION: data["tasks"]}
@@ -98,11 +96,29 @@ def _json_load_tasks() -> dict:
     return data
 
 
+def _json_load_tasks_unlocked() -> dict:
+    _ensure_json_exists()
+    try:
+        data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {DEFAULT_SECTION: []}
+    return _normalize_tasks(data)
+
+
+def _json_load_tasks() -> dict:
+    with _json_lock():
+        return _json_load_tasks_unlocked()
+
+
+def _json_save_tasks_unlocked(data: dict) -> None:
+    tmp = JSON_PATH.with_suffix(JSON_PATH.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(JSON_PATH)
+
+
 def _json_save_tasks(data: dict) -> None:
-    tmp = JSON_PATH.with_suffix(".tmp")
-    with _locked_json("r+") as _:
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-        tmp.replace(JSON_PATH)
+    with _json_lock():
+        _json_save_tasks_unlocked(data)
 
 
 # ---------- SQLite バックエンド ----------
@@ -222,13 +238,24 @@ def save_tasks(data: dict) -> None:
 
 @contextlib.contextmanager
 def update_tasks() -> Iterator[dict]:
-    data = load_tasks()
-    try:
-        yield data
-    except Exception:
-        raise
-    else:
-        save_tasks(data)
+    if _backend() == "sqlite":
+        data = _sqlite_load_tasks()
+        try:
+            yield data
+        except Exception:
+            raise
+        else:
+            _sqlite_save_tasks(data)
+        return
+
+    with _json_lock():
+        data = _json_load_tasks_unlocked()
+        try:
+            yield data
+        except Exception:
+            raise
+        else:
+            _json_save_tasks_unlocked(data)
 
 
 def get_active(section: str = DEFAULT_SECTION) -> list[dict]:

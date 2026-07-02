@@ -10,7 +10,8 @@
     2. DISCORD_GUILD_ID が未設定 → 従来どおり RANDOM/MAIL/EXTRA の明示指定のみ
 
 環境変数:
-    NOTION_TOKEN                  Notion Internal Integration Secret
+    NOTION_API_KEY                Notion Internal Integration Secret
+    NOTION_TOKEN                  旧変数名（NOTION_API_KEY が無い場合のみ fallback）
     NOTION_DB_LOG_LIBRARY         Log Library DB の ID
     DISCORD_GUILD_ID              サーバーID（設定すると全チャンネル自動取得）
     DISCORD_LOG_EXCLUDE_CHANNELS  除外チャンネルID（カンマ区切り、任意）
@@ -36,6 +37,10 @@ from dotenv import load_dotenv
 
 SECRETARY_HOME = Path(os.environ.get("SECRETARY_HOME", str(Path(__file__).resolve().parents[3])))
 load_dotenv(SECRETARY_HOME / ".env")
+if str(SECRETARY_HOME) not in sys.path:
+    sys.path.insert(0, str(SECRETARY_HOME))
+
+from scripts.lib.notion_config import get_notion_setting, notion_token  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
 NOTION_API = "https://api.notion.com/v1"
@@ -45,8 +50,8 @@ TIMEOUT_SEC = 30
 LOOKBACK_HOURS = 24
 MAX_BLOCK_CHARS = 1900  # Notion rich_text の 2000 文字上限に余裕
 
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
-DB_ID = os.environ.get("NOTION_DB_LOG_LIBRARY", "")
+NOTION_TOKEN = notion_token()
+DB_ID = get_notion_setting("NOTION_DB_LOG_LIBRARY", "")
 
 
 def _discord_token() -> str:
@@ -186,7 +191,7 @@ def main() -> int:
     # Notion 未設定なら何もせず正常終了（Notion 連携をしていない構成では cron が
     # 毎日エラーにならないよう skip 扱い）。
     if not NOTION_TOKEN or not DB_ID:
-        print("Notion 未設定（NOTION_TOKEN / NOTION_DB_LOG_LIBRARY）、skip")
+        print("Notion 未設定（NOTION_API_KEY / NOTION_DB_LOG_LIBRARY）、skip")
         return 0
     token = _discord_token()
     if not token:

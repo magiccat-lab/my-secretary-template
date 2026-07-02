@@ -260,7 +260,7 @@ tail -n 50 /tmp/task_remind.log
 ### 9.9 Notion 同期が `failed` で出続ける
 専用の切り分け手順は `docs/notion.md` セクション 5 参照。
 よくある原因 4 種:
-- `NOTION_TOKEN` 未設定 / 失効
+- `NOTION_API_KEY` 未設定 / 失効
 - DB ID 間違い（URL から取り直す）
 - Integration を DB に許可してない（DB 右上「…」→ Add connections）
 - DB プロパティ名 / 型のミス（`docs/notion.md` §3 のスキーマと完全一致が必要）

@@ -1044,8 +1044,19 @@ Notion の `Tasks` DB にローカルタスクが反映されているはずで�
 
 ### G2-9. 自動同期の cron を追加
 
-§I のコア cron で Notion 同期も含めて一括登録します。ここでは手動で足す必要はありません。
-（個別に足したい場合は `docs/cron.md` 参照。）
+Notion タスク同期を有効にする場合は、通常シェルで以下を 1 回実行します:
+
+```bash
+(crontab -l 2>/dev/null | grep -v 'sync_pending_to_notion.py'; echo "*/5 * * * * /usr/bin/python3 $HOME/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_pending_to_notion.log 2>&1") | crontab -
+```
+
+登録できたか確認:
+
+```bash
+crontab -l | grep sync_pending_to_notion
+```
+
+cron 全般の注意点は `docs/cron.md` 参照。
 
 ### G2-10. よくあるエラー
 
@@ -1312,7 +1323,7 @@ EOF
 crontab -l
 ```
 
-3 本とも並んでいれば OK。
+5 本とも並んでいれば OK。
 
 > nightly restart は週1で十分なら、上の `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に
 > 変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、各機能を

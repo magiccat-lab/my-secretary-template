@@ -23,6 +23,7 @@ __all__ = [
     "state_store",
     "error_db",
     "metrics_db",
+    "notion_config",
     "note_finder",
     "generate_notes_index",
     "brave_search",

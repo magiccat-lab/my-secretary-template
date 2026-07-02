@@ -98,9 +98,12 @@ def record_error(
     msg = message or (str(exc) if exc is not None else "")
     tb = traceback_text
     if tb is None and exc is not None:
-        tb = _tb.format_exc()
-        if tb.strip() in ("None", "NoneType: None"):
-            tb = None
+        if exc.__traceback__ is not None:
+            tb = "".join(_tb.format_exception(type(exc), exc, exc.__traceback__))
+        else:
+            tb = _tb.format_exc()
+            if tb.strip() in ("None", "NoneType: None"):
+                tb = None
 
     ctx_json = json.dumps(context, ensure_ascii=False) if context else None
 

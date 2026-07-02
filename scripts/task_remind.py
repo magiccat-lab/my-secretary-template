@@ -26,9 +26,9 @@ def main():
         primary_tasks = [t for t in data.get('primary', []) if not t.get('done')]
         secondary_tasks = [t for t in data.get('secondary', []) if not t.get('done')]
         if primary_tasks:
-            all_tasks += [{'title': f'[Primary] {t["title"]}', **t} for t in primary_tasks]
+            all_tasks += [{**t, 'title': f'[Primary] {t["title"]}'} for t in primary_tasks]
         if secondary_tasks:
-            all_tasks += [{'title': f'[Secondary] {t["title"]}', **t} for t in secondary_tasks]
+            all_tasks += [{**t, 'title': f'[Secondary] {t["title"]}'} for t in secondary_tasks]
 
     if not all_tasks:
         return

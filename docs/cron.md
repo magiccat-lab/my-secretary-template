@@ -91,6 +91,9 @@ tail -n 100 /tmp/health_check.log
 # Gmail モニター
 * * * * * /usr/bin/python3 /home/YOUR_USER/secretary/integrations/gmail/gmail_monitor.py >> /tmp/gmail_monitor.log 2>&1
 
+# Notion タスク同期
+*/5 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/integrations/notion/sync_pending_to_notion.py >> /tmp/sync_pending_to_notion.log 2>&1
+
 # Sheets タスク同期
 */15 * * * * cd /home/YOUR_USER/secretary && /usr/bin/python3 scripts/task_sheet_sync.py push >> /tmp/task_sheet.log 2>&1
 

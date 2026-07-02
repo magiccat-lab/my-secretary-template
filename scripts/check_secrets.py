@@ -15,9 +15,11 @@ git pre-commit フックとして有効化する手順は SETUP.md / docs/ops.md
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 SECRET_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("Google OAuth client_secret", re.compile(r"GOCSPX-[a-zA-Z0-9_-]{20,}")),
@@ -45,6 +47,8 @@ EXCLUDE_FILES = (
     "scripts/lib/secret_redact.py",
 )
 
+PLACEHOLDER_MARKERS = ("paste_", "your_", "placeholder", "TODO")
+
 
 def _excluded_file(path: str) -> bool:
     return any(path.endswith(f) for f in EXCLUDE_FILES)
@@ -59,6 +63,65 @@ def _run(args: list[str]) -> str:
         return subprocess.run(args, capture_output=True, text=True, timeout=30).stdout
     except Exception:
         return ""
+
+
+def _load_env_values(path: str = ".env") -> dict[str, str]:
+    values = dict(os.environ)
+    p = Path(path)
+    if not p.exists():
+        return values
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip().strip('"').strip("'")
+        if " #" in value:
+            value = value.split(" #", 1)[0].rstrip()
+        values.setdefault(key.strip(), value)
+    return values
+
+
+def _missing_or_placeholder(value: str) -> bool:
+    if not value.strip():
+        return True
+    lower = value.lower()
+    return any(marker.lower() in lower for marker in PLACEHOLDER_MARKERS)
+
+
+def check_notion_config() -> int:
+    env = _load_env_values()
+    token = env.get("NOTION_API_KEY") or env.get("NOTION_TOKEN", "")
+    env_db_id = env.get("SECRETARY_ENV_DB_ID", "")
+    direct_db_ids = {
+        "NOTION_DB_TASKS": env.get("NOTION_DB_TASKS", ""),
+        "NOTION_DB_WISHLIST": env.get("NOTION_DB_WISHLIST", ""),
+        "NOTION_DB_LOG_LIBRARY": env.get("NOTION_DB_LOG_LIBRARY", ""),
+    }
+
+    errors = []
+    if _missing_or_placeholder(token):
+        errors.append("NOTION_API_KEY（または旧 NOTION_TOKEN）が未設定です")
+    elif not token.startswith(("secret_", "ntn_")):
+        errors.append("NOTION_API_KEY は secret_ または ntn_ で始まる値を指定してください")
+
+    has_env_db = not _missing_or_placeholder(env_db_id)
+    has_direct_dbs = all(not _missing_or_placeholder(v) for v in direct_db_ids.values())
+    if not has_env_db and not has_direct_dbs:
+        errors.append(
+            "SECRETARY_ENV_DB_ID、または NOTION_DB_TASKS / NOTION_DB_WISHLIST / "
+            "NOTION_DB_LOG_LIBRARY の直接指定が必要です"
+        )
+
+    if errors:
+        print("❌ Notion 設定に不足があります:", file=sys.stderr)
+        for err in errors:
+            print(f"  - {err}", file=sys.stderr)
+        return 2
+
+    source = "SECRETARY_ENV_DB_ID" if has_env_db else "NOTION_DB_*"
+    print(f"✅ Notion 設定 OK（token + {source}）")
+    return 0
 
 
 def scan_staged() -> list[tuple[str, str, str]]:
@@ -98,6 +161,9 @@ def scan_all() -> list[tuple[str, str, str]]:
 
 
 def main() -> int:
+    if "--notion" in sys.argv:
+        return check_notion_config()
+
     findings = scan_all() if "--all" in sys.argv else scan_staged()
     if not findings:
         return 0
