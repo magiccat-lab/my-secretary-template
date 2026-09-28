@@ -40,7 +40,7 @@ EDIT_TOOL = "mcp__plugin_discord_discord__edit_message"
 
 def channel_tag(chat_id, message_id, body="お願い", source="plugin:discord:discord"):
     return (f'<channel source="{source}" chat_id="{chat_id}" message_id="{message_id}" '
-            f'user="ryo" ts="2026-09-21T00:00:00Z">{body}</channel>')
+            f'user="user1" ts="2026-09-21T00:00:00Z">{body}</channel>')
 
 
 def reply_success_text(msg_id="1"):
@@ -153,17 +153,17 @@ class RestPatchedTestCase(unittest.TestCase):
 
 class TestParseChannelTag(unittest.TestCase):
     def test_plugin_discord_discord_spelling(self):
-        text = channel_tag("111", "222", source="plugin:discord:discord")
-        self.assertEqual(state.parse_channel_tag(text), ("111", "222"))
+        text = channel_tag("100000000000000111", "100000000000000222", source="plugin:discord:discord")
+        self.assertEqual(state.parse_channel_tag(text), ("100000000000000111", "100000000000000222"))
 
     def test_short_discord_spelling(self):
-        text = channel_tag("333", "444", source="discord")
-        self.assertEqual(state.parse_channel_tag(text), ("333", "444"))
+        text = channel_tag("100000000000000333", "100000000000000444", source="discord")
+        self.assertEqual(state.parse_channel_tag(text), ("100000000000000333", "100000000000000444"))
 
     def test_attribute_order_independent(self):
-        text = ('<channel chat_id="555" message_id="666" source="discord" '
-                'ts="t" user="ryo">hi</channel>')
-        self.assertEqual(state.parse_channel_tag(text), ("555", "666"))
+        text = ('<channel chat_id="100000000000000555" message_id="100000000000000666" source="discord" '
+                'ts="t" user="user1">hi</channel>')
+        self.assertEqual(state.parse_channel_tag(text), ("100000000000000555", "100000000000000666"))
 
     def test_no_tag_returns_none(self):
         self.assertIsNone(state.parse_channel_tag("ただの雑談だよ"))
@@ -335,14 +335,14 @@ class TestLoadToken(unittest.TestCase):
 
 class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
     def test_start_reacts_received_and_saves_state(self):
-        prompt = channel_tag("111", "222")
+        prompt = channel_tag("100000000000000111", "100000000000000222")
         start_hook.main({"prompt": prompt})
 
-        st = state.load("111")
+        st = state.load("100000000000000111")
         self.assertEqual(st["stage"], state.STAGE_RECEIVED)
-        self.assertEqual(st["message_id"], "222")
-        self.assertIn(("react", "111", "222", "📨"), self.fake.calls)
-        self.assertEqual(self.spawned, [("111", "222")])
+        self.assertEqual(st["message_id"], "100000000000000222")
+        self.assertIn(("react", "100000000000000111", "100000000000000222", "📨"), self.fake.calls)
+        self.assertEqual(self.spawned, [("100000000000000111", "100000000000000222")])
 
     def test_start_noop_without_channel_tag(self):
         start_hook.main({"prompt": "ただのひとりごと"})
@@ -359,76 +359,76 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
         self.assertIsNone(state.load("1"))
 
     def test_posttool_switches_received_to_working_on_success(self):
-        start_hook.main({"prompt": channel_tag("111", "222")})
-        path = self.write_transcript([row_user(channel_tag("111", "222"))])
+        start_hook.main({"prompt": channel_tag("100000000000000111", "100000000000000222")})
+        path = self.write_transcript([row_user(channel_tag("100000000000000111", "100000000000000222"))])
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
-            "tool_input": {"chat_id": "111", "text": "見てくる"},
-            "tool_response": {"content": [{"type": "text", "text": reply_success_text("500")}]},
+            "tool_input": {"chat_id": "100000000000000111", "text": "見てくる"},
+            "tool_response": {"content": [{"type": "text", "text": reply_success_text("100000000000000500")}]},
             "transcript_path": path,  # reply_to無しなのでtranscriptから所有権を確認する
         })
-        st = state.load("111")
+        st = state.load("100000000000000111")
         self.assertEqual(st["stage"], state.STAGE_WORKING)
-        self.assertIn(("unreact", "111", "222", "📨"), self.fake.calls)
-        self.assertIn(("react", "111", "222", "▶"), self.fake.calls)
+        self.assertIn(("unreact", "100000000000000111", "100000000000000222", "📨"), self.fake.calls)
+        self.assertIn(("react", "100000000000000111", "100000000000000222", "▶"), self.fake.calls)
 
     def test_posttool_ignores_failed_tool_response(self):
-        start_hook.main({"prompt": channel_tag("111", "222")})
+        start_hook.main({"prompt": channel_tag("100000000000000111", "100000000000000222")})
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
-            "tool_input": {"chat_id": "111", "text": "見てくる"},
+            "tool_input": {"chat_id": "100000000000000111", "text": "見てくる"},
             "tool_response": {"content": [{"type": "text", "text": failure_text("rate limited")}]},
         })
-        st = state.load("111")
+        st = state.load("100000000000000111")
         self.assertEqual(st["stage"], state.STAGE_RECEIVED)  # 進んでいない
-        self.assertNotIn(("react", "111", "222", "▶"), self.fake.calls)
+        self.assertNotIn(("react", "100000000000000111", "100000000000000222", "▶"), self.fake.calls)
 
     def test_posttool_ignores_is_error_false_with_failed_text(self):
         """A1: is_error:falseだけでは成功扱いしない(本文の成功パターンが必須)。"""
-        start_hook.main({"prompt": channel_tag("111", "222")})
+        start_hook.main({"prompt": channel_tag("100000000000000111", "100000000000000222")})
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
-            "tool_input": {"chat_id": "111", "text": "見てくる"},
+            "tool_input": {"chat_id": "100000000000000111", "text": "見てくる"},
             "tool_response": {"is_error": False,
                                "content": [{"type": "text", "text": failure_text()}]},
         })
-        st = state.load("111")
+        st = state.load("100000000000000111")
         self.assertEqual(st["stage"], state.STAGE_RECEIVED)
 
     def test_posttool_ignores_none_tool_response(self):
-        start_hook.main({"prompt": channel_tag("111", "222")})
+        start_hook.main({"prompt": channel_tag("100000000000000111", "100000000000000222")})
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
-            "tool_input": {"chat_id": "111", "text": "見てくる"},
+            "tool_input": {"chat_id": "100000000000000111", "text": "見てくる"},
             "tool_response": None,
         })
-        st = state.load("111")
+        st = state.load("100000000000000111")
         self.assertEqual(st["stage"], state.STAGE_RECEIVED)
 
     def test_turn_end_finalizes_and_clears_state(self):
-        start_hook.main({"prompt": channel_tag("111", "222")})
+        start_hook.main({"prompt": channel_tag("100000000000000111", "100000000000000222")})
         rows = [
-            row_user(channel_tag("111", "222")),
-            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "111", "text": "見てくる"}),
-            row_tool_result("tu1", reply_success_text("500")),
+            row_user(channel_tag("100000000000000111", "100000000000000222")),
+            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "100000000000000111", "text": "見てくる"}),
+            row_tool_result("tu1", reply_success_text("100000000000000500")),
         ]
         path = self.write_transcript(rows)
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
-            "tool_input": {"chat_id": "111", "text": "見てくる"},
-            "tool_response": {"content": [{"type": "text", "text": reply_success_text("500")}]},
+            "tool_input": {"chat_id": "100000000000000111", "text": "見てくる"},
+            "tool_response": {"content": [{"type": "text", "text": reply_success_text("100000000000000500")}]},
             "transcript_path": path,  # reply_to無しなのでtranscriptから所有権を確認する
         })
-        self.assertEqual(state.load("111")["stage"], state.STAGE_WORKING)  # posttoolがここまで進めた
+        self.assertEqual(state.load("100000000000000111")["stage"], state.STAGE_WORKING)  # posttoolがここまで進めた
 
         turn_end_hook.main({"transcript_path": path, "stop_hook_active": False})
 
-        self.assertIsNone(state.load("111"))
-        self.assertIn(("react", "111", "222", "✅"), self.fake.calls)
-        self.assertIn(("unreact", "111", "222", "▶"), self.fake.calls)
+        self.assertIsNone(state.load("100000000000000111"))
+        self.assertIn(("react", "100000000000000111", "100000000000000222", "✅"), self.fake.calls)
+        self.assertIn(("unreact", "100000000000000111", "100000000000000222", "▶"), self.fake.calls)
 
     def test_turn_end_blocks_when_not_delivered(self):
-        rows = [row_user(channel_tag("30", "40"))]  # replyが1回も無い
+        rows = [row_user(channel_tag("100000000000000030", "100000000000000040"))]  # replyが1回も無い
         path = self.write_transcript(rows)
 
         out = StringIO()
@@ -440,7 +440,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
     def test_turn_end_guard_disabled_does_not_block(self):
         """DISCORD_REPLY_GUARD_ENABLED=0なら未配信でも差し戻さない。"""
-        rows = [row_user(channel_tag("30", "40"))]  # replyが1回も無い
+        rows = [row_user(channel_tag("100000000000000030", "100000000000000040"))]  # replyが1回も無い
         path = self.write_transcript(rows)
 
         os.environ["DISCORD_REPLY_GUARD_ENABLED"] = "0"
@@ -456,8 +456,8 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
     def test_turn_end_blocks_when_result_text_lacks_success_pattern(self):
         """A1: 「failedを含まない」だけでは配信済みと認めない(旧ロジックの穴)。"""
         rows = [
-            row_user(channel_tag("30", "40")),
-            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "30", "text": "見てくる"}),
+            row_user(channel_tag("100000000000000030", "100000000000000040")),
+            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "100000000000000030", "text": "見てくる"}),
             row_tool_result("tu1", "たぶん送った(たぶん)"),  # successパターンを含まない
         ]
         path = self.write_transcript(rows)
@@ -468,33 +468,33 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
         self.assertEqual(printed["decision"], "block")
 
     def test_turn_end_stop_hook_active_does_not_finalize(self):
-        rows = [row_user(channel_tag("30", "40"))]
+        rows = [row_user(channel_tag("100000000000000030", "100000000000000040"))]
         path = self.write_transcript(rows)
         out = StringIO()
         with redirect_stdout(out):
             turn_end_hook.main({"transcript_path": path, "stop_hook_active": True})
         self.assertEqual(out.getvalue(), "")   # blockも出さない
         self.assertEqual(self.fake.calls, [])  # 配信済み扱いにもしない
-        self.assertIsNone(state.load("30"))
+        self.assertIsNone(state.load("100000000000000030"))
 
     def test_turn_end_delivered_after_one_failed_retry(self):
         rows = [
-            row_user(channel_tag("30", "40")),
-            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "30", "text": "見てくる"}),
+            row_user(channel_tag("100000000000000030", "100000000000000040")),
+            row_tool_use("tu1", REPLY_TOOL, {"chat_id": "100000000000000030", "text": "見てくる"}),
             row_tool_result("tu1", failure_text("rate limited")),
-            row_tool_use("tu2", REPLY_TOOL, {"chat_id": "30", "text": "見てくる(再送)"}),
-            row_tool_result("tu2", reply_success_text("999")),
+            row_tool_use("tu2", REPLY_TOOL, {"chat_id": "100000000000000030", "text": "見てくる(再送)"}),
+            row_tool_result("tu2", reply_success_text("100000000000000999")),
         ]
         path = self.write_transcript(rows)
         out = StringIO()
         with redirect_stdout(out):
             turn_end_hook.main({"transcript_path": path, "stop_hook_active": False})
         self.assertEqual(out.getvalue(), "")  # blockしていない = 配信済みと判定
-        self.assertIn(("react", "30", "40", "✅"), self.fake.calls)
+        self.assertIn(("react", "100000000000000030", "100000000000000040", "✅"), self.fake.calls)
 
     def test_turn_end_ignores_foreign_state_with_different_message_id(self):
         """A3: 状態のmessage_idが今回の受信メッセージと違うなら、その状態は触らない。"""
-        chat_id = "42"
+        chat_id = "100000000000000042"
         state.save(chat_id, {
             "message_id": "OLD", "started_at": 1.0, "stage": state.STAGE_WORKING,
             "progress_message_id": "bubble-1", "editor_pid": os.getpid(), "generation": 1,
@@ -520,7 +520,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
         古いfinalizerはそのbubble/stateを壊さない(削除の直前にownershipを再確認する)。
         """
-        chat_id = "77"
+        chat_id = "100000000000000077"
         old_message_id, new_message_id = "OLD", "NEW"
         state.save(chat_id, {
             "message_id": old_message_id, "started_at": 1.0, "stage": state.STAGE_WORKING,
@@ -559,7 +559,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
     def test_posttool_and_turn_end_work_without_userpromptsubmit(self):
         """UserPromptSubmitが発火しなくても、PostToolUse+Stopだけで一連の状態遷移が完結する。"""
-        chat_id, message_id = "777", "888"
+        chat_id, message_id = "100000000000000777", "100000000000000888"
         # start_hook.main は一度も呼ばない
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
@@ -584,7 +584,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
         self.assertIn(("react", chat_id, message_id, "✅"), self.fake.calls)
 
     def test_posttool_recovers_message_id_from_transcript_when_no_reply_to(self):
-        chat_id, message_id = "333", "444"
+        chat_id, message_id = "100000000000000333", "100000000000000444"
         rows = [row_user(channel_tag(chat_id, message_id, body="reply_to無しで送って"))]
         path = self.write_transcript(rows)
         posttool_hook.main({
@@ -597,7 +597,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
         self.assertEqual(st["message_id"], message_id)
 
     def test_posttool_skips_reactions_when_message_id_unknown(self):
-        chat_id = "555"
+        chat_id = "100000000000000555"
         posttool_hook.main({
             "tool_name": REPLY_TOOL,
             "tool_input": {"chat_id": chat_id, "text": "見てくる"},  # reply_to無し
@@ -613,7 +613,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
     def test_posttool_ignores_foreign_state_when_reply_to_mismatches(self):
         """A3: 既存stateのmessage_idとreply_toが食い違うなら、その状態は触らない。"""
-        chat_id = "42"
+        chat_id = "100000000000000042"
         state.save(chat_id, {
             "message_id": "OLD", "started_at": 1.0, "stage": state.STAGE_RECEIVED,
             "progress_message_id": None, "editor_pid": os.getpid(), "generation": 1,
@@ -634,7 +634,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
         食い違うなら既存stateには触れない(以前はreply_to無し=確認自体をskipしていた穴。
         edit_messageは常にこの経路を通る)。
         """
-        chat_id = "88"
+        chat_id = "100000000000000088"
         state.save(chat_id, {
             "message_id": "OLD", "started_at": 1.0, "stage": state.STAGE_RECEIVED,
             "progress_message_id": None, "editor_pid": os.getpid(), "generation": 1,
@@ -656,7 +656,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
     def test_posttool_without_reply_to_or_transcript_does_not_touch_existing_state(self):
         """reply_toもtranscriptも無ければ、既存stateがあっても一切触らない。"""
-        chat_id = "89"
+        chat_id = "100000000000000089"
         original = {
             "message_id": "OLD", "started_at": 1.0, "stage": state.STAGE_RECEIVED,
             "progress_message_id": None, "editor_pid": os.getpid(), "generation": 1,
@@ -675,7 +675,7 @@ class TestStartPosttoolTurnEndFlow(RestPatchedTestCase):
 
     def test_posttool_edit_message_without_reply_to_advances_same_turn_via_transcript(self):
         """edit_messageにはreply_toが無いので、常にtranscriptで所有権を確認して昇格する。"""
-        chat_id, message_id = "90", "900"
+        chat_id, message_id = "100000000000000090", "100000000000000900"
         state.save(chat_id, {
             "message_id": message_id, "started_at": 1.0, "stage": state.STAGE_RECEIVED,
             "progress_message_id": None, "editor_pid": os.getpid(), "generation": 1,
@@ -733,15 +733,15 @@ class TestEditorHelpers(RestPatchedTestCase):
 
     def test_handle_timeout_clears_state_and_reacts_warning(self):
         state.save("chat-timeout", {"stage": state.STAGE_WORKING, "editor_pid": os.getpid()})
-        editor._handle_timeout("chat-timeout", "222", "999", 90)
+        editor._handle_timeout("chat-timeout", "100000000000000222", "100000000000000999", 90)
         self.assertIsNone(state.load("chat-timeout"))  # 孤児化対策: 消える
-        self.assertIn(("edit", "chat-timeout", "999", "⚠️ 応答が止まっています (経過 90 分)"),
+        self.assertIn(("edit", "chat-timeout", "100000000000000999", "⚠️ 応答が止まっています (経過 90 分)"),
                        self.fake.calls)
-        self.assertIn(("react", "chat-timeout", "222", "⚠️"), self.fake.calls)
+        self.assertIn(("react", "chat-timeout", "100000000000000222", "⚠️"), self.fake.calls)
 
     def test_handle_timeout_skips_reaction_when_message_id_unknown(self):
         state.save("chat-timeout2", {"stage": state.STAGE_WORKING, "editor_pid": os.getpid()})
-        editor._handle_timeout("chat-timeout2", None, "999", 90)
+        editor._handle_timeout("chat-timeout2", None, "100000000000000999", 90)
         react_calls = [c for c in self.fake.calls if c[0] == "react"]
         self.assertEqual(react_calls, [])
         self.assertIsNone(state.load("chat-timeout2"))
@@ -751,7 +751,7 @@ class TestEditorHelpers(RestPatchedTestCase):
 
         古いスナップショットを書き戻してstateを復活させない。
         """
-        chat_id, message_id = "999", "1000"
+        chat_id, message_id = "100000000000000999", "100000000000001000"
         state.save(chat_id, {
             "message_id": message_id, "started_at": time.time(), "stage": state.STAGE_RECEIVED,
             "progress_message_id": None, "editor_pid": os.getpid(), "generation": 1,
