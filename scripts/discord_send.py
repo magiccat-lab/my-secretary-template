@@ -24,10 +24,10 @@ def send(channel_id: str, message: str) -> bool:
             "Authorization": f"Bot {token}",
             "Content-Type": "application/json"
         },
-        json={"content": message},
+        json={"content": message, "allowed_mentions": {"parse": ["users"]}},
         timeout=10
     )
-    if r.status_code == 200:
+    if 200 <= r.status_code < 300:
         return True
     else:
         print(f"Discord送信エラー: {r.status_code} {r.text}", file=sys.stderr)
