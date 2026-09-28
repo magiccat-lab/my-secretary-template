@@ -114,6 +114,7 @@ python3 scripts/discord_send.py <channel_id> "hello from cron"
 webhook経由:
 ```bash
 curl -X POST http://localhost:8781/remind \
+  -H "X-Webhook-Token: $WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"hello","channel":"CHANNEL_ID"}'
 ```
