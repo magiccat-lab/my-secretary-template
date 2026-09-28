@@ -19,6 +19,7 @@ export HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
 export PATH="$HOME/.bun/bin:$HOME/.local/bin:$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 source "$SCRIPT_DIR/../.env"
+WEBHOOK_PORT="${WEBHOOK_PORT:-8781}"
 LOG_FILE="/tmp/restart.log"
 
 DISCORD_TOKEN=$(grep '^DISCORD_BOT_TOKEN=' "$HOME/.claude/channels/discord/.env" 2>/dev/null | cut -d= -f2)
@@ -33,10 +34,12 @@ discord_send() {
     local channel="$1"
     local message="$2"
     [ -z "$DISCORD_TOKEN" ] || [ -z "$channel" ] && return
+    local payload
+    payload=$(echo "$message" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read().strip(), "allowed_mentions": {"parse": ["users"]}}))')
     /usr/bin/curl -s -X POST "https://discord.com/api/v10/channels/${channel}/messages" \
         -H "Authorization: Bot ${DISCORD_TOKEN}" \
         -H "Content-Type: application/json" \
-        -d "{\"content\": $(echo "$message" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}" \
+        -d "$payload" \
         > /dev/null 2>&1
 }
 
@@ -70,7 +73,7 @@ fi
 
 # 4. handoff 再開シグナル（webhook ready確認後に投入）
 for i in $(seq 1 15); do
-    if curl -fsS --max-time 2 http://localhost:8781/health > /dev/null 2>&1; then
+    if curl -fsS --max-time 2 "http://localhost:${WEBHOOK_PORT}/health" > /dev/null 2>&1; then
         queue_message "/tmp/claude_queue.txt" "resumed! (nightly restart) — data/handoff.md を読んでください"
         log "再起動 OK"
         discord_send "$CH_NOTIFY" "再起動 完了"

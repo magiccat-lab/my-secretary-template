@@ -4,8 +4,10 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../.env"
+WEBHOOK_PORT="${WEBHOOK_PORT:-8781}"
 
 DISCORD_CHANNEL="${DISCORD_CHANNEL_RANDOM}"
+NL=$'\n'
 LOG=/tmp/startup_check.log
 LAST_ALIVE=/tmp/secretary_last_alive.txt
 
@@ -14,9 +16,12 @@ log() {
 }
 
 notify() {
-    curl -s -X POST http://localhost:8781/remind \
+    local payload
+    payload=$(python3 -c 'import json,sys; print(json.dumps({"message": sys.argv[1], "channel": sys.argv[2]}))' "$1" "$DISCORD_CHANNEL")
+    curl -s -X POST "http://localhost:${WEBHOOK_PORT}/remind" \
+        -H "X-Webhook-Token: ${WEBHOOK_TOKEN}" \
         -H "Content-Type: application/json" \
-        -d "{\"message\": \"$1\", \"channel\": \"$DISCORD_CHANNEL\"}" > /dev/null 2>&1
+        -d "$payload" > /dev/null 2>&1
 }
 
 log "startup_check 開始"
@@ -45,7 +50,7 @@ if [ -f "$LAST_ALIVE" ]; then
 
         if [ -n "$missed_jobs" ]; then
             job_count=$(echo "$missed_jobs" | wc -l)
-            msg="⚡ secretaryが再起動しました（ダウン: 約${down_minutes}分）\\nその間に ${job_count}件のcronが実行されましたが結果が未配信の可能性があります\\n確認が必要なら「落ちてた間のジョブ確認して」と言ってください"
+            msg="⚡ secretaryが再起動しました（ダウン: 約${down_minutes}分）${NL}その間に ${job_count}件のcronが実行されましたが結果が未配信の可能性があります${NL}確認が必要なら「落ちてた間のジョブ確認して」と言ってください"
         else
             msg="⚡ secretaryが再起動しました（ダウン: 約${down_minutes}分）"
         fi
@@ -65,20 +70,20 @@ errors=""
 
 # webhookサーバー確認
 sleep 3
-response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8781/health)
+response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:${WEBHOOK_PORT}/health")
 if [ "$response" != "200" ]; then
-    errors="${errors}webhookサーバーが応答しない\n"
+    errors="${errors}webhookサーバーが応答しない${NL}"
     log "ERROR: webhook応答なし (${response})"
 fi
 
 # queue_watcher確認
 if ! pgrep -f "queue_watcher.sh" > /dev/null 2>&1; then
-    errors="${errors}queue_watcherが起動していない\n"
+    errors="${errors}queue_watcherが起動していない${NL}"
     log "ERROR: queue_watcher未起動"
 fi
 
 if [ -n "$errors" ]; then
-    notify "⚠️ 起動後チェックで問題が見つかりました:\\n${errors}"
+    notify "⚠️ 起動後チェックで問題が見つかりました:${NL}${errors}"
     log "起動チェック失敗: $errors"
 else
     log "起動チェック: 全て正常"
