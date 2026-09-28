@@ -24,8 +24,6 @@ import sys
 from email import message_from_bytes
 from email.header import decode_header
 
-import requests
-
 # `from scripts.lib.state_store import ...` を動かすためリポジトリルートを sys.path に追加。
 # __file__ -> integrations/gmail/gmail_monitor.py なので dirname を3回でルートに到達。
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
@@ -37,6 +35,7 @@ from google.oauth2.credentials import Credentials  # noqa: E402
 from googleapiclient.discovery import build  # noqa: E402
 
 from scripts.lib.state_store import load_state, save_state  # noqa: E402
+from scripts.lib import webhook_client  # noqa: E402
 
 TOKEN = os.getenv(
     "GOOGLE_TOKEN_PATH",
@@ -46,7 +45,6 @@ STATE_FILE = os.path.join(
     os.getenv("STATE_DIR", os.path.expanduser("~/secretary/data")),
     "gmail_monitor_state.json",
 )
-WEBHOOK = os.getenv("WEBHOOK_URL", "http://localhost:8781/gmail_notify")
 CONCIERGE_DOMAIN = os.getenv("CONCIERGE_DOMAIN", "")
 
 SCOPES = [
@@ -206,7 +204,7 @@ def main() -> None:
                 if n["is_silent_archive"]:
                     archive(service, n["mid"])
                     continue
-                requests.post(WEBHOOK, json=n, timeout=10)
+                webhook_client.post("/gmail_notify", n)
                 mark_read(service, n["mid"])
                 if n["is_auto_reply"]:
                     archive(service, n["mid"])
