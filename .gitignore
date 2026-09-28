@@ -13,3 +13,5 @@ node_modules/
 *.log
 *.lock
 .DS_Store
+data/discord_progress/
+data/logs/
