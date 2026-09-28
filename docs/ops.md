@@ -193,6 +193,11 @@ screen -r secretary
 ```
 出てたら `/login` → 終わったら Ctrl+A D。
 
+今どちらの認証方式か迷ったら `bash ~/secretary/scripts/doctor.sh` の
+「Claude認証トークン」行 か、`start_server.sh` 起動時の `claude auth:` 行で分かる。
+1年トークン (setup-token) に切り替えていれば `/login` の30日切れ自体が起きなくなる。
+詳細は `docs/claude_auth_token.md`（セクション10も参照）。
+
 **d. Discord プラグインの設定**
 screen内で `/discord:configure` / `/discord:access`。allowlist確認。
 詳細は `docs/discord.md`。
@@ -242,6 +247,9 @@ tail -n 50 /tmp/health_check.log
 - webhookポートが別プロセスに掴まれている
 - Claude Codeが起動時に失敗（screenで確認）
 - OAuth失効でAPI 401ループ
+
+30分で3回以上再起動すると暴走とみなして自動停止する（Discordに1回だけ通知して
+`exit 0`、手動確認待ちになる）。履歴は `/tmp/health_check_restart_history.txt`。
 
 ### 9.7 「タスクファイルが上書き / リセットされる」
 詳細は `docs/tasks.md` セクション末尾。`fcntl.flock` と `update_tasks`
@@ -411,3 +419,19 @@ loginctl enable-linger $USER   # ユーザーがログアウトしてても起�
    ```
 
 > ⚠️ `git reset --hard` は破壊的。実行前に必ず `git stash` で退避してください。
+
+---
+
+## 10. Claude の認証（30日の /login と1年トークン）
+
+デフォルトは `/login` の OAuth 認証で、30日で失効する（切れると health_check.sh が
+検知して Discord に通知する）。`claude setup-token` で発行する1年トークンに切り替えると
+更新作業が年1回で済む。
+
+```bash
+bash ~/secretary/scripts/setup_claude_token.sh
+```
+
+手順・仕組み・ロールバックは `docs/claude_auth_token.md` を参照。今どちらの認証方式で
+動いているかは `bash ~/secretary/scripts/doctor.sh` の「Claude認証トークン」行、または
+`start_server.sh` 起動時の `claude auth:` 行で確認できる。
