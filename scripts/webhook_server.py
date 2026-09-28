@@ -253,7 +253,7 @@ if __name__ == "__main__":
 
     if WEBHOOK_HOST not in ("127.0.0.1", "localhost"):
         logger.warning(
-            f"WEBHOOK_HOST={WEBHOOK_HOST} — 外部に開いている。"
+            f"WEBHOOK_HOST={WEBHOOK_HOST} は外部に開いている。"
             "TLS 付き reverse proxy の後ろ以外で使わない"
         )
 
