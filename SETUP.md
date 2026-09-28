@@ -453,7 +453,7 @@ which claude
 
 `/usr/bin/claude` あるいは `/usr/local/bin/claude` が出れば成功。
 
-### B-5. ログインフローを通す
+### B-5. 認証を通す（1年トークン推奨）
 
 ```bash
 claude
@@ -463,9 +463,15 @@ claude
 Claude のアカウントで認証してください（VPS 上にブラウザは無いので、URL を
 コピーして自分の Mac/Windows で開く）。
 
-ログインが終わったら `/exit` で一度抜けます。
+ログインが終わったら `/exit` で一度抜けます（1年トークンに切り替える場合も、
+プラグインの初期化のためこの手順はまず必要です）。
 
 > ✅ ここまでで `claude --version` が動けば B 完了。次は C へ進みます。
+
+`/login` の OAuth 認証は30日で失効します。そのままでも動きますが、切れると
+`health_check.sh` が「Claude の認証が切れてます」と Discord に通知してきて、
+月1回 `/login` を打ち直す必要があります。**1年トークンに切り替えると更新が
+年1回で済みます**（推奨）。テンプレートの clone 後、§C-2 の手順で設定してください。
 
 ---
 
@@ -511,6 +517,24 @@ API キー/トークンらしき文字列を見つけたら commit を中断し�
 ```bash
 python3 ~/secretary/scripts/check_secrets.py --all
 ```
+
+### C-2. 1年トークンを保存する（推奨）
+
+§B-5 で `/login` だけ通した場合は、ここで1年トークンに切り替えられます
+（30日ごとの再ログインが不要になります）:
+
+```bash
+bash ~/secretary/scripts/setup_claude_token.sh
+```
+
+`claude setup-token` が起動し、ブラウザでの認証後に表示されたトークンをこの
+スクリプトが自動で拾って `data/secrets/claude_oauth_token`（mode 600）に保存します。
+保存できたら案内どおり `bash ~/secretary/start_server.sh` で再起動してください
+（起動ログの `claude auth: setup-token ファイルを使用` で切り替わったことを
+確認できます）。手順の詳細・ロールバックは `docs/claude_auth_token.md` 参照。
+
+`/login` のままでも動きます。その場合は30日ごとに `screen -r secretary` で
+`/login` を打ち直してください（切れると Discord に通知が来ます）。
 
 ---
 
@@ -1213,9 +1237,12 @@ Claude Code は起動時に 2 種類の UI prompt を出す:
 >
 > 💡 自動化の仕組み詳細は [ペパボの記事](https://zenn.dev/pepabo/articles/claude-code-cron-autonomous-ui-walls) 参照。
 
-初回起動直後に Claude Code が `/login` を求めてくることはまずありませんが、
-もし `API Error: 401` 等が出ていたら `screen -r secretary` で `/login` を
-叩いて通してください。
+起動時のターミナル出力に `claude auth: setup-token ファイルを使用` /
+`claude auth: /login 認証 (token file なし)` のどちらかが出ます。これで今どちらの
+認証方式で動いているか分かります（§C-2 で1年トークンに切り替えていれば前者）。
+`/login` 認証のまま30日以上経つと Claude Code が `/login` を求めてくることがあり、
+その場合は `screen -r secretary` で `API Error: 401` 等が出ていないか確認し、
+出ていたら `/login` を叩いて通してください。
 
 ### Discord プラグインの初期設定
 
@@ -1293,12 +1320,32 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 
 終わったら `Ctrl+A D` で抜けます。
 
-#### 5. コア cron を登録する（必須）
+#### 5. コア cron を登録する（必須・自動）
 
-秘書を安定運用するための **必須 cron 5 本**をまとめて登録します。`nightly restart`
-（毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・不安定になるのを防ぐ
-標準装備で、handoff 生成 → コールドリスタートを内包します。通常シェル（screen の外）で、
-まるごとコピペして実行:
+秘書を安定運用するための **必須 cron 5 本**は、`start_server.sh`（このセクションで
+実行済み）が起動のたびに `scripts/install_crons.sh` を呼んで自動登録します。
+`nightly restart`（毎日 03:00）は 24/7 運用で会話コンテキストが溜まって重く・
+不安定になるのを防ぐ標準装備で、handoff 生成 → コールドリスタートを内包します。
+
+登録されたか確認:
+
+```bash
+crontab -l
+```
+
+以下の 5 本が並んでいれば OK（2 回目以降の起動で managed block 内の時刻を
+書き換えても、次回起動時に上書きされません。デフォルトに戻したいときだけ
+`bash ~/secretary/scripts/install_crons.sh --force`）:
+
+- `health_check.sh`（5 分おき）… セッションが**落ちて**いたら自動で復帰
+- `session_watchdog.py`（2 分おき）… セッションが**固まって**いたら（上限/選択肢/MCP認証/キュー詰まり）自動で復帰
+- `task_remind.py`（毎日 06:30 / 22:30）… 未完了タスクのリマインド
+- `restart.sh`（毎日 03:00）… handoff 生成 + コールドリスタート（nightly restart）
+- `discord_log_to_library.py`（毎日 23:50）… その日の Discord ログを Notion Log Library に送る
+  （Notion 未設定なら自動 skip）
+
+**5 本並んでいなければ**、通常シェル（screen の外）で以下をまるごとコピペして
+手動登録してください:
 
 ```bash
 (crontab -l 2>/dev/null; cat <<EOF
@@ -1310,21 +1357,6 @@ DISCORD_CHANNEL_EXTRA="111,222,333" python3 ~/secretary/scripts/discord_access_a
 EOF
 ) | crontab -
 ```
-
-- `health_check.sh`（5 分おき）… セッションが**落ちて**いたら自動で復帰
-- `session_watchdog.py`（2 分おき）… セッションが**固まって**いたら（上限/選択肢/MCP認証/キュー詰まり）自動で復帰
-- `task_remind.py`（毎日 06:30 / 22:30）… 未完了タスクのリマインド
-- `restart.sh`（毎日 03:00）… handoff 生成 + コールドリスタート（nightly restart）
-- `discord_log_to_library.py`（毎日 23:50）… その日の Discord ログを Notion Log Library に送る
-  （Notion 未設定なら自動 skip）
-
-登録できたか確認:
-
-```bash
-crontab -l
-```
-
-5 本とも並んでいれば OK。
 
 > nightly restart は週1で十分なら、上の `0 3 * * *` を `10 3 * * 0`（日曜 03:10）に
 > 変えてください。Gmail / カレンダー / Notion 同期など機能ごとの cron は、各機能を
@@ -1392,6 +1424,12 @@ screen -r secretary
 # 中で /login を叩いてブラウザ認証
 # 終わったら Ctrl+A D で抜ける
 ```
+
+1年トークン（setup-token）を使っている場合は `/login` ではなく再発行します:
+```bash
+bash ~/secretary/scripts/setup_claude_token.sh
+```
+詳細は `docs/claude_auth_token.md`。
 
 ### 3. `ModuleNotFoundError: No module named 'xxx'`
 

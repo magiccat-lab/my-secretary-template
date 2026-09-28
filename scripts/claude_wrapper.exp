@@ -11,8 +11,8 @@
 set timeout 30
 log_user 1
 
-# 呼び出し側から追加引数受け取り対応
-eval spawn claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official $argv
+# 呼び出し側から追加引数受け取り対応（eval + $argv は Tcl の再解釈が入るため {*}$argv で展開する）
+spawn claude --dangerously-skip-permissions --channels plugin:discord@claude-plugins-official {*}$argv
 
 # 壁1 [Bypass Permissions 確認] と壁2 [Trust this folder] を順不同で待つ
 # 通常 accept 済なら即起動完了 prompt に到達 → timeout で抜ける
