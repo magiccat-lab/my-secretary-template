@@ -1,16 +1,36 @@
 #!/bin/bash
 # install_crons.sh — 必須 cron ジョブを自動登録する
-# 使い方: bash ~/secretary/scripts/install_crons.sh
-# このテンプレートが管理する cron ブロックだけを差し替える
+# 使い方: bash ~/secretary/scripts/install_crons.sh [--force]
+#
+# このテンプレートが管理する cron ブロックだけを差し替える。
+# 既に managed block が登録済みなら何もしない（JOBS.md は時刻を「好みで調整」
+# してよいと案内しており、start_server.sh のたびに上書きすると調整が毎回
+# 消えてしまうため）。デフォルト内容に強制的に戻したいときだけ --force を付ける。
 
 set -euo pipefail
 export HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
-SECRETARY_DIR="$HOME/secretary"
+SECRETARY_DIR="${SECRETARY_DIR:-$HOME/secretary}"
+
+FORCE=0
+if [ "${1:-}" = "--force" ]; then
+    FORCE=1
+fi
 
 MARKER_BEGIN="# >>> my-secretary-template managed crons >>>"
 MARKER_END="# <<< my-secretary-template managed crons <<<"
 
 existing=$(crontab -l 2>/dev/null || true)
+
+had_block=0
+if printf "%s\n" "$existing" | grep -qF "$MARKER_BEGIN"; then
+    had_block=1
+fi
+
+if [ "$had_block" -eq 1 ] && [ "$FORCE" -ne 1 ]; then
+    echo "登録済み。更新するなら --force"
+    exit 0
+fi
+
 managed=$(cat <<EOF
 $MARKER_BEGIN
 */5 * * * * /bin/bash $SECRETARY_DIR/scripts/health_check.sh >> /tmp/health_check.log 2>&1
@@ -36,6 +56,10 @@ cleaned=$(
     printf "%s\n" "$managed"
 } | crontab -
 
-echo "=== my-secretary-template の必須 cron 5 本を登録/更新しました ==="
+if [ "$had_block" -eq 1 ]; then
+    echo "=== my-secretary-template の必須 cron 5 本を --force で更新しました ==="
+else
+    echo "=== my-secretary-template の必須 cron 5 本を登録しました ==="
+fi
 
 crontab -l | grep -v '^#' | grep -v '^$'
