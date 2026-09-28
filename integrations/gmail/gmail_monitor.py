@@ -8,7 +8,8 @@
     GOOGLE_TOKEN_PATH  Google 共通 OAuth token.json のパス（デフォルト: integrations/google/token.json）
                        Calendar / Gmail / Sheets / Drive / Docs / Forms で同じトークンを共有する
     STATE_DIR          ステート保存ディレクトリ（デフォルト: ~/secretary/data）
-    WEBHOOK_URL        通知先エンドポイント（デフォルト: http://localhost:8781/gmail_notify）
+    WEBHOOK_PORT / WEBHOOK_BASE / WEBHOOK_TOKEN
+                       webhook サーバーの接続先・認証（scripts/lib/webhook_client.py 参照）
     CONCIERGE_DOMAIN   オプション: このドメインからのメールを "concierge" として扱う
 
 cron の例:
