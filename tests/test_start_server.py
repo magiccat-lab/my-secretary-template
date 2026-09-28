@@ -187,7 +187,7 @@ class StartServerTest(unittest.TestCase):
         )
         # setup_claude_token.sh の既定と同じ ANTHROPIC_API_KEY を紛れ込ませておき、
         # 「setup-token使用時はunsetされる」を実際に確認できるようにする
-        self.env["ANTHROPIC_API_KEY"] = "sk-ant-api03-test-should-be-removed"
+        self.env["ANTHROPIC_API_KEY"] = "sk-ant-example-key-should-be-removed"
 
         self.addCleanup(self._kill_fake_queue_watcher)
 
