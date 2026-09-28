@@ -27,4 +27,7 @@ __all__ = [
     "note_finder",
     "generate_notes_index",
     "brave_search",
+    "webhook_client",
+    "discord_rest",
+    "discord_progress_state",
 ]

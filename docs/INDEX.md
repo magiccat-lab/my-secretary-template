@@ -20,6 +20,9 @@
 | 「webhookで〇〇させたい」「systemdで常駐」「エンドポイント増やして」 | `docs/webhook.md` | webhook_server.pyのエンドポイント仕様・認証・systemdユニット |
 | 「bot落ちた」「死活監視」「再起動」「ログ見たい」「何か壊れた」 | `docs/ops.md` | health_check/daily_handoff/定期再起動/トラブルシューティング |
 | 「タスクどう保存してる」「スマホからタスク見たい」「スプシと同期」 | `docs/tasks.md` | pending_tasks.json の構造と Google Sheets 双方向同期 |
+| 「ログインが切れた」「/login しろと言われた」「1 年トークン」「認証切れの通知が来た」 | `docs/claude_auth_token.md` | Claude Code の認証 (30 日の /login と 1 年トークン)、切れた時の直し方 |
+| 「返信したのに差し戻された」「📨 ▶ ✅ のリアクション」「作業中バブル」 | `docs/discord_progress.md` | reply を送らずに終えると差し戻す hook と、進行表示の仕組み・止め方 |
+| 「テンプレの新しい版を取り込みたい」「本家が更新された」 | `docs/bootstrap.md` §7 | 自分の private リポジトリに公開テンプレの更新を merge する手順 |
 | 「Notion と繋ぎたい」「タスク Notion で見たい」「Wishlist 追加して」「Notion 同期失敗」 | `docs/notion.md` | Notion DB との同期・Wishlist 追加・トラブルシュート |
 
 ## 既存ジョブ・これから追加するジョブ

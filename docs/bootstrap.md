@@ -143,6 +143,33 @@ cron からは `~/secretary/.venv/bin/python3` を直で叩く。
 
 ---
 
+## 7. 公開テンプレの更新を取り込む
+
+`SETUP.md` C2 で origin を自分の private リポジトリに切り替えた後も、公開テンプレ
+（magiccat-lab/my-secretary-template）側の修正を取り込める。ユーザーが「本家が更新された」
+「新しい版を入れたい」と言ってきたら:
+
+```bash
+cd ~/secretary
+git remote add template https://github.com/magiccat-lab/my-secretary-template.git 2>/dev/null || true
+git fetch template
+git log --oneline HEAD..template/main      # 何が来るか先に見る
+git merge template/main                    # 衝突が出たら下の方針で解く
+```
+
+衝突の解き方:
+- `AGENT/IDENTITY.md` / `AGENT/USER.md` / `AGENT/JOBS.md` / `.env` まわりは **自分の版を残す**
+  （`git checkout --ours <file>` → `git add <file>`）。テンプレ側はプレースホルダなので取り込む価値が無い
+- `scripts/` / `docs/` / `start_server.sh` は **テンプレ側を取る**（`git checkout --theirs <file>`）
+  のが基本。自分で手を入れていた場合だけ中身を見て混ぜる
+- 解けたら `git commit` → `python3 scripts/check_secrets.py --all` で秘匿情報が混ざっていないか確認
+  → `bash ~/secretary/start_server.sh` で再起動
+
+取り込んだ後は `bash ~/secretary/scripts/doctor.sh` を 1 回通して、新しく必須になった
+設定（環境変数・cron）が無いか確認する。
+
+---
+
 ## 6. 参照
 
 - 人間向けの初回セットアップ: **`/SETUP.md`**（リポジトリ直下）

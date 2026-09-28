@@ -17,6 +17,10 @@ Claude Code をエンジンに、プライベートな Discord チャンネル�
 - **[`docs/INDEX.md`](docs/INDEX.md)** — エージェント（起動後の秘書）が
   運用時に参照するリファレンス群の索引。仕組みが気になったときに覗く用。
 
+- **`bash ~/secretary/scripts/doctor.sh`** — 起動前・不調時の点検。足りないコマンド、
+  `.env` の必須キー、Discord トークン、Claude の認証、cron を ✅/❌ で一覧します。
+  `start_server.sh` も起動のたびに同じ点検を走らせて警告を出します。
+
 ## 必要なもの
 
 | | |
