@@ -94,8 +94,8 @@ Xserver VPS のデフォルトは **パケットフィルタが有効 + SSH [22]
 > 💡 「すべて許可」で進めると、後で個別 ON に絞り直すのを忘れがちです。
 > 最初から **「SSH」のみ ON** にしておくのが筋。
 >
-> 後の手順（§I で `webhook_server` を立てる）で port 8781 を追加で開ける場面も
-> ありますが、そこは別途やります。
+> webhook は localhost 専用（`WEBHOOK_HOST=127.0.0.1` が既定）なので、
+> port 8781 を追加で開ける必要はありません。
 
 到達性確認（PowerShell / bash どちらでも）:
 
@@ -876,6 +876,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 出てきた長い16進文字列をコピーしてメモしてください（これが `WEBHOOK_TOKEN`）。
+このトークンは `webhook_server.py` が起動時に検証します。無いと起動しません。
 
 ---
 
@@ -1413,6 +1414,8 @@ webhook サーバーが落ちています。手動起動で動くか確認:
 ```bash
 python3 ~/secretary/scripts/webhook_server.py
 ```
+
+`WEBHOOK_TOKEN` が空だと起動しません（画面に出るエラーを見てください）。
 
 同じポートを別プロセスが掴んでいないかも確認:
 

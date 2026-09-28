@@ -1,35 +1,53 @@
 #!/usr/bin/env python3
 """先輩待ちタスクリマインダー - 未完了タスクがあれば通知"""
-import json
-import requests
 import os
-from dotenv import load_dotenv
+import sys
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+# スクリプトとして実行したときに `from scripts.lib...` でインポートできるようにする
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-TASKS_FILE = os.path.expanduser('~/secretary/data/pending_tasks.json')
-WEBHOOK = 'http://localhost:8781/remind'
+from dotenv import load_dotenv  # noqa: E402
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_REPO_ROOT, ".env"))
+
+from scripts.lib.task_store import DEFAULT_SECTION, get_active, load_tasks  # noqa: E402
+from scripts.lib import webhook_client  # noqa: E402
+
 CHANNEL_ID = os.getenv('DISCORD_CHANNEL_RANDOM', '')
 
-def main():
-    if not os.path.exists(TASKS_FILE):
-        return
+# primary/secondary は昔からの接頭辞規則を維持。それ以外のセクションが増えても
+# 拾えるよう汎用フォールバックを用意する
+_SECTION_LABELS = {
+    DEFAULT_SECTION: '[Primary] ',
+    'secondary': '[Secondary] ',
+}
 
-    with open(TASKS_FILE) as f:
-        data = json.load(f)
 
-    # primary/secondaryセクション両方から集める（旧形式tasksも互換）
+def _label(section: str) -> str:
+    if section in _SECTION_LABELS:
+        return _SECTION_LABELS[section]
+    return f'[{section.capitalize()}] '
+
+
+def _collect_active_tasks() -> list[dict]:
+    """primary/secondary 他、全 list セクションから remind_at が未来のものを除いた
+    未完了タスクを集める（旧形式 tasks は task_store 側で primary に正規化される）。"""
+    data = load_tasks()
+    sections = [s for s, v in data.items() if isinstance(v, list)]
+    # primary → secondary → その他 の順（旧来の並びを踏襲）
+    ordered = [s for s in (DEFAULT_SECTION, 'secondary') if s in sections]
+    ordered += [s for s in sections if s not in ordered]
+
     all_tasks = []
-    if 'tasks' in data:
-        all_tasks = [t for t in data['tasks'] if not t.get('done')]
-    else:
-        primary_tasks = [t for t in data.get('primary', []) if not t.get('done')]
-        secondary_tasks = [t for t in data.get('secondary', []) if not t.get('done')]
-        if primary_tasks:
-            all_tasks += [{**t, 'title': f'[Primary] {t["title"]}'} for t in primary_tasks]
-        if secondary_tasks:
-            all_tasks += [{**t, 'title': f'[Secondary] {t["title"]}'} for t in secondary_tasks]
+    for section in ordered:
+        for t in get_active(section):
+            all_tasks.append({**t, 'title': f'{_label(section)}{t["title"]}'})
+    return all_tasks
 
+
+def main():
+    all_tasks = _collect_active_tasks()
     if not all_tasks:
         return
 
@@ -38,10 +56,8 @@ def main():
         lines.append(f'・{t["title"]}')
 
     message = '\n'.join(lines)
-    requests.post(WEBHOOK, json={
-        'channel_id': CHANNEL_ID,
-        'message': message
-    }, timeout=10)
+    webhook_client.remind(message, channel=CHANNEL_ID)
+
 
 if __name__ == '__main__':
     main()

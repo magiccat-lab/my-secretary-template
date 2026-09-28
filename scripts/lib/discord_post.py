@@ -87,7 +87,7 @@ def post(
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json",
     }
-    payload = {"content": text}
+    payload = {"content": text, "allowed_mentions": {"parse": ["users"]}}
 
     for attempt in range(max_retries):
         try:

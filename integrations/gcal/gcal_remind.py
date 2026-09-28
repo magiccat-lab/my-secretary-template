@@ -7,7 +7,9 @@ random チャンネルにリマインドを投稿する。
 環境変数:
     GOOGLE_TOKEN_PATH   token.json のパス（デフォルト: integrations/google/token.json）
     GCAL_CALENDAR_ID    対象カレンダー ID（デフォルト: "primary"）
-    WEBHOOK_URL         webhook エンドポイント（デフォルト: http://localhost:8781/remind）
+    STATE_DIR           ステート保存ディレクトリ（デフォルト: ~/secretary/data）
+    WEBHOOK_PORT / WEBHOOK_BASE / WEBHOOK_TOKEN
+                        webhook サーバーの接続先・認証（scripts/lib/webhook_client.py 参照）
 
 cron の例:
     * * * * * /usr/bin/python3 ~/secretary/integrations/gcal/gcal_remind.py \\
@@ -20,7 +22,6 @@ import datetime
 import os
 import sys
 
-import requests
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -30,6 +31,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from scripts.lib.state_store import load_state, save_state  # noqa: E402
+from scripts.lib import webhook_client  # noqa: E402
 
 load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
@@ -37,8 +39,10 @@ TOKEN_PATH = os.path.expanduser(
     os.getenv("GOOGLE_TOKEN_PATH", os.path.join(_REPO_ROOT, "integrations/google/token.json"))
 )
 CALENDAR_ID = os.getenv("GCAL_CALENDAR_ID", "primary")
-STATE_FILE = "/tmp/gcal_remind_state.json"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://localhost:8781/remind")
+STATE_FILE = os.path.join(
+    os.getenv("STATE_DIR", os.path.expanduser("~/secretary/data")),
+    "gcal_remind_state.json",
+)
 DISCORD_CHANNEL = os.getenv("DISCORD_CHANNEL_RANDOM", "")
 REMIND_MINUTES = 30
 
@@ -83,11 +87,7 @@ def main() -> None:
         msg = f"30分後に予定があります\n**{time_str} {summary}**"
 
         try:
-            requests.post(
-                WEBHOOK_URL,
-                json={"message": msg, "channel": DISCORD_CHANNEL},
-                timeout=5,
-            )
+            webhook_client.remind(msg, channel=DISCORD_CHANNEL)
             state[event_id] = now.isoformat()
             print(f"リマインド送信: {summary} ({time_str})")
         except Exception as e:
