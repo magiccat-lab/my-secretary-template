@@ -70,7 +70,11 @@ tail -n 100 /tmp/health_check.log
 
 ## 6. 推奨ジョブ一覧
 
-### 最小セット（セットアップ時に必ず入れる）
+### 最小セット（`start_server.sh` が初回起動時に自動登録する）
+
+`scripts/install_crons.sh` が下の 5 本を managed block として crontab に入れる。
+登録済みなら再起動しても触らない（時刻を変えてよい）。既定に戻すのは
+`bash ~/secretary/scripts/install_crons.sh --force`。手で入れる時の中身:
 ```cron
 */5 * * * * /bin/bash /home/YOUR_USER/secretary/scripts/health_check.sh >> /tmp/health_check.log 2>&1
 */2 * * * * /usr/bin/python3 /home/YOUR_USER/secretary/scripts/session_watchdog.py >> /tmp/session_watchdog.log 2>&1

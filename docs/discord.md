@@ -132,6 +132,8 @@ webhookエンドポイントの詳細は `docs/webhook.md` 参照。
   （`edit_message` は通知が来ない）。
 - 短い確認・質問も `reply`。
 - ツールチェーン後の最初の発話は必ず `reply`。ターミナル出力は自分用メモ。
+- この規則は hook が機械的に守る。`reply` を送らずにターンを終えると Stop hook が
+  差し戻し、進行表示（📨→▶→✅）も hook が付ける（`docs/discord_progress.md`）。
 
 ---
 

@@ -19,19 +19,25 @@ clone 直後〜初めて Discord が繋がるまではそちらを参照して�
 │   ├── USER.md                # ユーザー情報
 │   ├── AGENTS.md              # 行動ルール（Discord、タスク、安全）
 │   └── JOBS.md                # 定期実行ジョブ
+├── .claude/settings.json      # Discord 進行表示 / reply 差し戻しの hook 登録（docs/discord_progress.md）
 ├── scripts/                   # コアランタイム + cron スクリプト
-│   ├── webhook_server.py
+│   ├── webhook_server.py      # 要 WEBHOOK_TOKEN、既定は 127.0.0.1 のみ（docs/webhook.md）
+│   ├── doctor.sh              # 起動前点検（start_server.sh からも呼ばれる）
+│   ├── setup_claude_token.sh  # Claude の 1 年トークン保存（docs/claude_auth_token.md）
+│   ├── install_crons.sh       # 必須 cron の登録（登録済みなら触らない、--force で戻す）
 │   ├── task_remind.py
 │   ├── task_sheet_sync.py
 │   ├── daily_handoff.py
 │   ├── health_check.sh
 │   ├── queue_watcher.sh
-│   └── lib/                   # jst, tasks, db, notes, error_db, metrics_db
+│   ├── hooks/                 # discord_progress_*.py / discord_turn_end.py
+│   └── lib/                   # jst, tasks, db, notes, error_db, metrics_db, webhook_client, discord_rest
 ├── integrations/
 │   ├── discord/               # ドキュメントのみ
 │   ├── gcal/                  # Calendar スクリプト + OAuth フロー（Gmail と共有）
 │   └── gmail/                 # Gmail モニター
-├── data/                      # タスク、handoff、notes（gitignore）
+├── data/                      # タスク、handoff、notes（バックアップとして push する。secrets/ と logs/ は gitignore）
+│   └── secrets/               # claude_oauth_token（1 年トークン、gitignore）
 ├── docs/                      # 本ドキュメント群（INDEXから辿る）
 ├── .env.template
 ├── requirements.txt
@@ -101,17 +107,21 @@ webhook スクリプトだけ触った場合は、webhook ウィンドウ内で 
 ユーザーが「引越す」「別の VPS に移す」と言ってきたとき:
 
 1. **現 VPS**: `data/` と `memory/`（あれば）をバックアップ git repo に push、
-   `.env` 2つ と `integrations/google/token.json` / `credentials.json` を
-   安全な場所にコピーしてもらう
+   `.env` 2つ と `integrations/google/token.json` / `credentials.json`、
+   1 年トークンを使っていれば `data/secrets/claude_oauth_token`（と `.issued_at`）を
+   安全な場所にコピーしてもらう（トークンは新 VPS で `scripts/setup_claude_token.sh` を
+   やり直してもよい）
 2. **新 VPS**: `SETUP.md` の A〜C をそのまま実行してもらう
    （apt、timezone、claude-code、clone、pip install）
 3. **新 VPS**: バックアップから `.env` 2つ、`integrations/google/token.json` /
    `credentials.json`、`data/pending_tasks.json` を復元（Editツールでユーザー
    から内容を貼ってもらうか、scp で流してもらう）
-4. **新 VPS**: `bash ~/secretary/start_server.sh` で起動 → `/discord:access`
-   で allowlist 再設定（ここはユーザー操作）
-5. cron は `crontab -l` の中身を**新 VPS で再登録**（ユーザー名パスが変わる
-   ので `docs/cron.md` のユーザー置換を忘れずに）
+4. **新 VPS**: `bash ~/secretary/scripts/doctor.sh` で足りない物を確認してから
+   `bash ~/secretary/start_server.sh` で起動 → `/discord:access` で allowlist 再設定
+   （ここはユーザー操作）
+5. 必須 cron 5 本は `start_server.sh` が自動登録する。自分で足した cron だけ
+   `crontab -l` の中身を**新 VPS で再登録**（ユーザー名パスが変わるので
+   `docs/cron.md` のユーザー置換を忘れずに）
 
 ### 新規 VPS 初期設定の最小コマンド（クイックリファレンス）
 `SETUP.md` A に同じ内容があるが、エージェントが SSH 越しに代行する場合の
